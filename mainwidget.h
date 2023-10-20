@@ -18,11 +18,18 @@ public:
     ~MainWidget();
 private slots:
 
-    void on_lvSource_doubleClicked(const QModelIndex &index);
+
+    void on_fileList_1_doubleClicked(const QModelIndex &index);
+
+
+    void on_fileTree_1_doubleClicked(const QModelIndex &index);
+    void on_fileTree_2_doubleClicked(const QModelIndex &index);
+
 
 private:
     Ui::MainWidget *ui;
-    QFileSystemModel *model;
+    QFileSystemModel *model_1;
+    QFileSystemModel *model_2;
 };
 
 #endif // MAINWIDGET_H

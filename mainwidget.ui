@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1920</width>
+    <width>1500</width>
     <height>1080</height>
    </rect>
   </property>
@@ -16,9 +16,9 @@
   <widget class="QFrame" name="frame_2">
    <property name="geometry">
     <rect>
-     <x>960</x>
-     <y>80</y>
-     <width>955</width>
+     <x>710</x>
+     <y>90</y>
+     <width>700</width>
      <height>980</height>
     </rect>
    </property>
@@ -32,9 +32,9 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>40</y>
-      <width>351</width>
-      <height>940</height>
+      <y>39</y>
+      <width>300</width>
+      <height>941</height>
      </rect>
     </property>
     <property name="widgetResizable">
@@ -45,30 +45,17 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>349</width>
-       <height>938</height>
+       <width>298</width>
+       <height>939</height>
       </rect>
      </property>
-     <widget class="QScrollBar" name="verticalScrollBar_2">
+     <widget class="QTreeView" name="fileTree_2">
       <property name="geometry">
        <rect>
-        <x>330</x>
+        <x>0</x>
         <y>0</y>
-        <width>20</width>
-        <height>940</height>
-       </rect>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-     </widget>
-     <widget class="QListView" name="lvBackup">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>311</width>
-        <height>921</height>
+        <width>300</width>
+        <height>941</height>
        </rect>
       </property>
      </widget>
@@ -77,10 +64,10 @@
    <widget class="QScrollArea" name="scrollArea_4">
     <property name="geometry">
      <rect>
-      <x>350</x>
+      <x>300</x>
       <y>40</y>
-      <width>600</width>
-      <height>940</height>
+      <width>400</width>
+      <height>941</height>
      </rect>
     </property>
     <property name="widgetResizable">
@@ -91,43 +78,32 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>598</width>
-       <height>938</height>
+       <width>398</width>
+       <height>939</height>
       </rect>
      </property>
-     <widget class="QScrollBar" name="verticalScrollBar_4">
+     <widget class="QListView" name="fileList_2">
       <property name="geometry">
        <rect>
-        <x>580</x>
+        <x>0</x>
         <y>0</y>
-        <width>20</width>
-        <height>940</height>
+        <width>400</width>
+        <height>941</height>
        </rect>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
       </property>
      </widget>
     </widget>
    </widget>
-   <widget class="QWidget" name="widget_2" native="true">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>951</width>
-      <height>41</height>
-     </rect>
-    </property>
-   </widget>
+   <zorder>scrollArea_4</zorder>
+   <zorder>scrollArea_3</zorder>
   </widget>
   <widget class="QFrame" name="frame">
    <property name="geometry">
     <rect>
      <x>0</x>
-     <y>80</y>
-     <width>955</width>
-     <height>980</height>
+     <y>89</y>
+     <width>700</width>
+     <height>971</height>
     </rect>
    </property>
    <property name="frameShape">
@@ -140,9 +116,9 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>40</y>
-      <width>351</width>
-      <height>940</height>
+      <y>39</y>
+      <width>300</width>
+      <height>941</height>
      </rect>
     </property>
     <property name="widgetResizable">
@@ -153,30 +129,17 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>349</width>
-       <height>938</height>
+       <width>298</width>
+       <height>939</height>
       </rect>
      </property>
-     <widget class="QScrollBar" name="verticalScrollBar">
+     <widget class="QTreeView" name="fileTree_1">
       <property name="geometry">
        <rect>
-        <x>330</x>
+        <x>0</x>
         <y>0</y>
-        <width>20</width>
-        <height>940</height>
-       </rect>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-     </widget>
-     <widget class="QListView" name="lvSource">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>311</width>
-        <height>921</height>
+        <width>300</width>
+        <height>941</height>
        </rect>
       </property>
      </widget>
@@ -185,10 +148,10 @@
    <widget class="QScrollArea" name="scrollArea_2">
     <property name="geometry">
      <rect>
-      <x>350</x>
+      <x>300</x>
       <y>40</y>
-      <width>600</width>
-      <height>940</height>
+      <width>400</width>
+      <height>941</height>
      </rect>
     </property>
     <property name="widgetResizable">
@@ -199,34 +162,21 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>598</width>
-       <height>938</height>
+       <width>398</width>
+       <height>939</height>
       </rect>
      </property>
-     <widget class="QScrollBar" name="verticalScrollBar_3">
+     <widget class="QListView" name="fileList_1">
       <property name="geometry">
        <rect>
-        <x>580</x>
+        <x>0</x>
         <y>0</y>
-        <width>20</width>
-        <height>940</height>
+        <width>400</width>
+        <height>941</height>
        </rect>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
       </property>
      </widget>
     </widget>
-   </widget>
-   <widget class="QWidget" name="widget" native="true">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>951</width>
-      <height>41</height>
-     </rect>
-    </property>
    </widget>
   </widget>
   <widget class="QWidget" name="horizontalLayoutWidget">
