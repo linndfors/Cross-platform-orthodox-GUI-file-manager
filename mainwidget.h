@@ -18,9 +18,12 @@ public:
     ~MainWidget();
 
 private slots:
-    void setup_models();
     void setup_views();
+    void search_files();
+    void setup_models();
     void setup_connections();
+    void prompt_for_filename();
+    void prompt_for_folder_name();
 
     QFileSystemModel* setup_file_system_model(QDir::Filters filter);
     void setup_tree_view(QTreeView *view, QFileSystemModel *model);

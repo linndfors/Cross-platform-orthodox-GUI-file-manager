@@ -1,4 +1,8 @@
 #include <QStyledItemDelegate>
+#include <QListWidgetItem>
+#include <QDesktopServices>
+#include <QMessageBox>
+#include <QInputDialog>
 #include <stdint.h>
 
 #include "mainwidget.h"
@@ -54,25 +58,33 @@ void MainWidget::setup_tree_view(QTreeView *view, QFileSystemModel *model) {
 
 
 void MainWidget::setup_connections() {
-    connect(ui->dir_list_1, &QListView::doubleClicked,
-            this, &MainWidget::on_fileList_doubleClicked);
-    connect(ui->dir_list_2, &QListView::doubleClicked,
-            this, &MainWidget::on_fileList_doubleClicked);
-    connect(ui->dir_tree_1, &QTreeView::doubleClicked,
-            this, &MainWidget::on_fileTree_1_doubleClicked);
-    connect(ui->dir_tree_2, &QTreeView::doubleClicked,
-            this, &MainWidget::on_fileTree_2_doubleClicked);
+    for (auto listView : {ui->dir_list_1, ui->dir_list_2}) {
+        connect(listView, &QListView::doubleClicked,
+                this, &MainWidget::on_fileList_doubleClicked);
+    }
 
-    connect(ui->dir_tree_1->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, &MainWidget::display_selected_path);
-    connect(ui->dir_tree_2->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, &MainWidget::display_selected_path);
+    for (auto treeView : {ui->dir_tree_1, ui->dir_tree_2}) {
+        if (treeView == ui->dir_tree_1) {
+            connect(treeView, &QTreeView::doubleClicked,
+                    this, &MainWidget::on_fileTree_1_doubleClicked);
+        } else {
+            connect(treeView, &QTreeView::doubleClicked,
+                    this, &MainWidget::on_fileTree_2_doubleClicked);
+        }
 
-    connect(ui->dir_list_1->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, &MainWidget::display_selected_path);
-    connect(ui->dir_list_2->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, &MainWidget::display_selected_path);
+        connect(treeView->selectionModel(), &QItemSelectionModel::currentChanged,
+                this, &MainWidget::display_selected_path);
+    }
+
+    for (auto listView : {ui->dir_list_1, ui->dir_list_2}) {
+        connect(listView->selectionModel(), &QItemSelectionModel::currentChanged,
+                this, &MainWidget::display_selected_path);
+    }
+    connect(ui->new_file, &QPushButton::clicked, this, &MainWidget::prompt_for_filename);
+    connect(ui->new_dir, &QPushButton::clicked, this, &MainWidget::prompt_for_folder_name);
+    connect(ui->search, &QPushButton::clicked, this, &MainWidget::search_files);
 }
+
 
 
 MainWidget::~MainWidget() {
@@ -144,11 +156,117 @@ void MainWidget::display_selected_path(const QModelIndex &index) {
     } else if (itemView == ui->dir_tree_2) {
         ui->path_2->setText(fileInfo.absoluteFilePath());
     }
-    // For List Views
+
     else if (itemView == ui->dir_list_1) {
         ui->path_1->setText(fileInfo.absoluteFilePath());
     } else if (itemView == ui->dir_list_2) {
         ui->path_2->setText(fileInfo.absoluteFilePath());
     }
 }
+
+void MainWidget::prompt_for_filename() {
+    bool ok;
+    QString filename = QInputDialog::getText(this, tr("Enter Filename"),
+                                             tr("Filename:"), QLineEdit::Normal,
+                                             "default.txt", &ok);
+    if (ok && !filename.isEmpty()) {
+        QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+
+        QFileInfo fi(filename);
+        QString baseName = fi.baseName();
+        QString extension = fi.completeSuffix();
+
+        QString filePath = QDir(currentDirPath).filePath(filename);
+
+        int counter = 1;
+        while (QFile::exists(filePath)) {
+            filePath = QDir(currentDirPath).filePath(QString("%1 (%2).%3").arg(baseName).arg(counter).arg(extension));
+            counter++;
+        }
+
+        QFile file(filePath);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.close();
+            qDebug() << "File created:" << filePath;
+        } else {
+            qDebug() << "Failed to create file:" << filePath;
+        }
+    }
+}
+
+
+void MainWidget::prompt_for_folder_name() {
+    bool ok;
+    QString folderName = QInputDialog::getText(this, tr("Enter Folder Name"),
+                                               tr("Folder Name:"), QLineEdit::Normal,
+                                               "New Folder", &ok);
+    if (ok && !folderName.isEmpty()) {
+        QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+
+        QString folderPath = QDir(currentDirPath).filePath(folderName);
+
+        QDir dir;
+
+        int counter = 1;
+        while (dir.exists(folderPath)) {
+            folderPath = QDir(currentDirPath).filePath(QString("%1 (%2)").arg(folderName).arg(counter));
+            counter++;
+        }
+
+        if (dir.mkdir(folderPath)) {
+            qDebug() << "Folder created:" << folderPath;
+        } else {
+            qDebug() << "Failed to create folder:" << folderPath;
+        }
+    }
+}
+
+
+void MainWidget::search_files() {
+    bool ok;
+    QString searchTerm = QInputDialog::getText(this, tr("Search"),
+                                               tr("Search for:"), QLineEdit::Normal,
+                                               "", &ok);
+    if (ok && !searchTerm.isEmpty()) {
+        QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+
+        QDirIterator it(currentDirPath, QDir::AllEntries, QDirIterator::Subdirectories);
+
+        QStringList results;
+        while (it.hasNext()) {
+            it.next();  // Move the iterator to the next entry.
+            QString currentFilePath = it.filePath();
+            if (it.fileName().contains(searchTerm, Qt::CaseInsensitive)) {  // Check if the current filename contains the searchTerm.
+                results << currentFilePath;
+            }
+        }
+
+        if (!results.isEmpty()) {
+            QDialog dialog(this);
+            QVBoxLayout *layout = new QVBoxLayout(&dialog);
+            QListWidget *listWidget = new QListWidget(&dialog);
+            layout->addWidget(listWidget);
+
+            for (const QString &result : results) {
+                listWidget->addItem(result);
+            }
+
+            connect(listWidget, &QListWidget::itemDoubleClicked, [this](QListWidgetItem *item){
+                QString path = item->text();
+                QFileInfo info(path);
+                if (info.isFile()) {
+                    path = info.absolutePath();  // if it's a file, get the directory containing it
+                }
+                // Set the directory in dir_list_1
+                ui->dir_list_1->setRootIndex(model_1->index(path));
+            });
+
+            dialog.exec();
+        } else {
+            QMessageBox::information(this, "Search Results", "No matching files or directories found.");
+        }
+    }
+}
+
+
 
