@@ -3,6 +3,12 @@
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QFileDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QFileInfoList>
+#include <QDebug>
 #include <stdint.h>
 
 #include "mainwidget.h"
@@ -83,6 +89,7 @@ void MainWidget::setup_connections() {
     connect(ui->new_file, &QPushButton::clicked, this, &MainWidget::prompt_for_filename);
     connect(ui->new_dir, &QPushButton::clicked, this, &MainWidget::prompt_for_folder_name);
     connect(ui->search, &QPushButton::clicked, this, &MainWidget::search_files);
+    connect(ui->copyButton, &QPushButton::clicked, this, &MainWidget::copy);
 }
 
 
@@ -115,6 +122,8 @@ void MainWidget::on_fileList_doubleClicked(const QModelIndex &index)
         listView->setRootIndex(model->index(dir.absolutePath()));
     } else if (fileInfo.isDir()) {
         listView->setRootIndex(index);
+    } else if (fileInfo.isFile()) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.absoluteFilePath()));
     }
 }
 
@@ -269,4 +278,116 @@ void MainWidget::search_files() {
 }
 
 
+
+bool MainWidget::copy_file(const QString &sourcePath, const QString &destinationPath) {
+    QFile sourceFile(sourcePath);
+
+    if (!sourceFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "Could not open source file:" << sourcePath;
+        return false;
+    }
+
+    QFile destinationFile(destinationPath);
+    if (!destinationFile.open(QIODevice::WriteOnly)) {
+        qWarning() << "Could not open destination file:" << destinationPath;
+        return false;
+    }
+
+    QByteArray fileData = sourceFile.readAll();
+    destinationFile.write(fileData);
+
+    sourceFile.close();
+    destinationFile.close();
+
+    return true;
+}
+
+
+bool MainWidget::copy_directory(const QString &sourcePath, const QString &destinationPath, bool isRoot=true) {
+    QDir sourceDir(sourcePath);
+    if (!sourceDir.exists()) {
+        qWarning() << "Source directory does not exist:" << sourcePath;
+        return false;
+    }
+
+    QString finalDestinationPath;
+    if (isRoot) {
+        finalDestinationPath = destinationPath + QDir::separator() + sourceDir.dirName();
+    } else {
+        finalDestinationPath = destinationPath;
+    }
+
+    QDir destDir(finalDestinationPath);
+    if (!destDir.exists()) {
+        destDir.mkpath(finalDestinationPath);
+    }
+
+    QFileInfoList fileInfoList = sourceDir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
+
+    for (const QFileInfo &fileInfo : fileInfoList) {
+        const QString sourceFilePath = fileInfo.absoluteFilePath();
+        const QString destFilePath = finalDestinationPath + QDir::separator() + fileInfo.fileName();
+
+        if (fileInfo.isDir()) {
+            if (!copy_directory(sourceFilePath, destFilePath, false)) {
+                return false;
+            }
+        } else if (fileInfo.isFile()) {
+            QFile::copy(sourceFilePath, destFilePath);
+        } else {
+            qWarning() << "Unsupported file type:" << sourceFilePath;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+void MainWidget::copy() {
+    QString defaultSourcePath;
+    QModelIndex currentIndex1 = ui->dir_list_1->currentIndex();
+    QModelIndex currentIndex2 = ui->dir_list_2->currentIndex();
+
+    if (currentIndex1.isValid()) {
+        defaultSourcePath = model_1->filePath(currentIndex1);
+    } else if (currentIndex2.isValid()) {
+        defaultSourcePath = model_2->filePath(currentIndex2);
+    } else {
+        defaultSourcePath = model_1->filePath(ui->dir_list_1->rootIndex());
+    }
+
+    bool ok;
+    QString sourcePath = QInputDialog::getText(this, tr("Copy from"),
+                                               tr("Source:"), QLineEdit::Normal,
+                                               defaultSourcePath, &ok);
+    if (ok && !sourcePath.isEmpty()) {
+        QString defaultDestinationPath = "";
+
+        QString destinationPath = QInputDialog::getText(this, tr("Copy to"),
+                                                        tr("Destination:"), QLineEdit::Normal,
+                                                        defaultDestinationPath, &ok);
+        if (ok && !destinationPath.isEmpty()) {
+            QFileInfo sourceInfo(sourcePath);
+            QFileInfo destinationInfo(destinationPath);
+
+            if (sourceInfo.isDir()) {
+                if (destinationInfo.exists() && !destinationInfo.isDir()) {
+                    QMessageBox::warning(this, tr("Error"), tr("Cannot copy a directory to a file."));
+                    return;
+                }
+                copy_directory(sourcePath, destinationPath);
+            } else if (sourceInfo.isFile()) {
+                if (destinationInfo.isDir()) {
+                    destinationPath = QDir(destinationPath).absoluteFilePath(sourceInfo.fileName());
+                }
+                copy_file(sourcePath, destinationPath);
+            } else {
+                QMessageBox::warning(this, tr("Error"), tr("Invalid source path."));
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
+        }
+    }
+}
 

@@ -24,6 +24,10 @@ private slots:
     void setup_connections();
     void prompt_for_filename();
     void prompt_for_folder_name();
+    void copy();
+    bool copy_file(const QString &sourcePath, const QString &destinationPath);
+    bool copy_directory(const QString &sourcePath, const QString &destinationPath, bool isRoot);
+
 
     QFileSystemModel* setup_file_system_model(QDir::Filters filter);
     void setup_tree_view(QTreeView *view, QFileSystemModel *model);
