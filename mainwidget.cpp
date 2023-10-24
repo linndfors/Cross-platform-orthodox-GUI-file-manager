@@ -281,6 +281,16 @@ void MainWidget::search_files() {
 
 bool MainWidget::copy_file(const QString &sourcePath, const QString &destinationPath) {
     QFile sourceFile(sourcePath);
+    QFile checkDestFile(destinationPath);
+
+    if (checkDestFile.exists()) {
+        auto reply = QMessageBox::question(this, "File Exists",
+                                           "The file already exists. Do you want to overwrite it?",
+                                           QMessageBox::Yes | QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            return false; // User doesn't want to overwrite
+        }
+    }
 
     if (!sourceFile.open(QIODevice::ReadOnly)) {
         qWarning() << "Could not open source file:" << sourcePath;
