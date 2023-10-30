@@ -287,7 +287,7 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
         auto reply = QMessageBox::question(this, "File Exists",
                                            "The file already exists. Do you want to overwrite it?",
                                            QMessageBox::Yes | QMessageBox::No);
-        if (reply != QMessageBox::Yes) {
+        if (reply != QMessageBox::No) {
             return false; // User doesn't want to overwrite
         }
     }

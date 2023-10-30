@@ -13,4 +13,5 @@ Instruments: Qt Creator (IDEA)/
 - view
 - archive
 - new file/dir
-## Resources: https://youtube.com/playlist?list=PLS1QulWo1RIZiBcTr5urECberTITj7gjA&si=k_nxoQdJTPAKRBGi
+## Resources:
+https://youtube.com/playlist?list=PLS1QulWo1RIZiBcTr5urECberTITj7gjA&si=k_nxoQdJTPAKRBGi
