@@ -10,6 +10,7 @@
 #include <QFileInfoList>
 #include <QDebug>
 #include <stdint.h>
+#include <QMenu>
 
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
@@ -24,6 +25,26 @@ MainWidget::MainWidget(QWidget *parent)
     setup_models();
     setup_views();
     setup_connections();
+
+    contextMenu = new QMenu(this);
+    newFileAction = contextMenu->addAction("New File");
+    newDirAction = contextMenu->addAction("New Directory");
+    deleteAction = contextMenu->addAction("Delete");
+
+
+    connect(newFileAction, &QAction::triggered, this, &MainWidget::createNewFile);
+    connect(newDirAction, &QAction::triggered, this, &MainWidget::createNewDirectory);
+    connect(deleteAction, &QAction::triggered, this, &MainWidget::deleteSelectedItems);
+
+    for (auto listView : {ui->dir_list_1, ui->dir_list_2}) {
+        listView->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(listView, &QListView::customContextMenuRequested, this, &MainWidget::showContextMenu);
+    }
+
+    for (auto treeView : {ui->dir_tree_1, ui->dir_tree_2}) {
+        treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(treeView, &QTreeView::customContextMenuRequested, this, &MainWidget::showContextMenu);
+    }
 }
 
 
@@ -52,6 +73,7 @@ void MainWidget::setup_views() {
 
 void MainWidget::setup_tree_view(QTreeView *view, QFileSystemModel *model) {
     view->setModel(model);
+    view->setSelectionBehavior(QAbstractItemView::SelectItems);
 
     view->setRootIndex(model->index(QDir::homePath()));
 
@@ -97,14 +119,6 @@ void MainWidget::setup_connections() {
 MainWidget::~MainWidget() {
     delete ui;
 }
-
-//void contentDifference(QDir &sDir, QDir &dDir, QFileInfoList &diffList) {
-
-//}
-
-//void recursiveContentList(QDir &dir, QFileInfoList &contentList) {
-
-//}
 
 
 void MainWidget::on_fileList_doubleClicked(const QModelIndex &index)
@@ -159,7 +173,6 @@ void MainWidget::display_selected_path(const QModelIndex &index) {
 
     QFileInfo fileInfo = model->fileInfo(index);
 
-    // For Tree Views
     if (itemView == ui->dir_tree_1) {
         ui->path_1->setText(fileInfo.absoluteFilePath());
     } else if (itemView == ui->dir_tree_2) {
@@ -243,9 +256,9 @@ void MainWidget::search_files() {
 
         QStringList results;
         while (it.hasNext()) {
-            it.next();  // Move the iterator to the next entry.
+            it.next();
             QString currentFilePath = it.filePath();
-            if (it.fileName().contains(searchTerm, Qt::CaseInsensitive)) {  // Check if the current filename contains the searchTerm.
+            if (it.fileName().contains(searchTerm, Qt::CaseInsensitive)) {
                 results << currentFilePath;
             }
         }
@@ -264,9 +277,8 @@ void MainWidget::search_files() {
                 QString path = item->text();
                 QFileInfo info(path);
                 if (info.isFile()) {
-                    path = info.absolutePath();  // if it's a file, get the directory containing it
+                    path = info.absolutePath();
                 }
-                // Set the directory in dir_list_1
                 ui->dir_list_1->setRootIndex(model_1->index(path));
             });
 
@@ -288,7 +300,7 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
                                            "The file already exists. Do you want to overwrite it?",
                                            QMessageBox::Yes | QMessageBox::No);
         if (reply != QMessageBox::No) {
-            return false; // User doesn't want to overwrite
+            return false;
         }
     }
 
@@ -400,4 +412,107 @@ void MainWidget::copy() {
         }
     }
 }
+
+void MainWidget::showContextMenu(const QPoint &pos) {
+    QObject* senderObject = sender();
+    if (!senderObject) return;
+
+    // Store the view that triggered the context menu
+    contextMenuView = qobject_cast<QAbstractItemView*>(senderObject);
+
+    if (contextMenuView) {
+        contextMenu->popup(contextMenuView->viewport()->mapToGlobal(pos));
+    }
+}
+
+void MainWidget::createNewFile() {
+    bool ok;
+    QString filename = QInputDialog::getText(this, tr("Enter Filename"),
+                                             tr("Filename:"), QLineEdit::Normal,
+                                             "newfile.txt", &ok);
+    if (ok && !filename.isEmpty()) {
+        QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+
+        QFileInfo fi(filename);
+        QString baseName = fi.baseName();
+        QString extension = fi.completeSuffix();
+
+        QString filePath = QDir(currentDirPath).filePath(filename);
+
+        int counter = 1;
+        while (QFile::exists(filePath)) {
+            filePath = QDir(currentDirPath).filePath(QString("%1 (%2).%3").arg(baseName).arg(counter).arg(extension));
+            counter++;
+        }
+
+        QFile file(filePath);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.close();
+            qDebug() << "File created:" << filePath;
+        } else {
+            qDebug() << "Failed to create file:" << filePath;
+        }
+    }
+}
+
+void MainWidget::createNewDirectory() {
+    bool ok;
+    QString folderName = QInputDialog::getText(this, tr("Enter Folder Name"),
+                                               tr("Folder Name:"), QLineEdit::Normal,
+                                               "New Folder", &ok);
+    if (ok && !folderName.isEmpty()) {
+        QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+
+        QString folderPath = QDir(currentDirPath).filePath(folderName);
+
+        QDir dir;
+
+        int counter = 1;
+        while (dir.exists(folderPath)) {
+            folderPath = QDir(currentDirPath).filePath(QString("%1 (%2)").arg(folderName).arg(counter));
+            counter++;
+        }
+
+        if (dir.mkdir(folderPath)) {
+            qDebug() << "Folder created:" << folderPath;
+        } else {
+            qDebug() << "Failed to create folder:" << folderPath;
+        }
+    }
+}
+
+void MainWidget::deleteSelectedItems() {
+    if (!contextMenuView) return;
+
+    QAbstractItemView* view = contextMenuView;
+
+    QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
+
+    if (selectedIndexes.isEmpty()) {
+        qDebug() << "No selected";
+        return;
+    }
+
+    int result = QMessageBox::question(this, "Confirm Deletion", "Are you sure you want to delete the selected items?", QMessageBox::Yes | QMessageBox::No);
+
+    if (result == QMessageBox::Yes) {
+        QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
+        if (!model) return;
+
+        for (const QModelIndex &index : selectedIndexes) {
+            QFileInfo fileInfo = model->fileInfo(index);
+            if (fileInfo.exists()) {
+                if (fileInfo.isDir()) {
+                    QDir dir(fileInfo.absoluteFilePath());
+                    dir.removeRecursively();
+                } else if (fileInfo.isFile()) {
+                    QFile file(fileInfo.absoluteFilePath());
+                    file.remove();
+                }
+            }
+        }
+    }
+}
+
+
 

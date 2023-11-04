@@ -38,11 +38,22 @@ private slots:
 
     void on_fileTree_1_doubleClicked(const QModelIndex &index);
     void on_fileTree_2_doubleClicked(const QModelIndex &index);
+    void createNewDirectory();
+    void createNewFile();
+    void showContextMenu(const QPoint &pos);
+    void deleteSelectedItems();
 
 private:
     Ui::MainWidget *ui;
     QFileSystemModel *model_1;
     QFileSystemModel *model_2;
+    QMenu* contextMenu;
+    QAction* newFileAction;
+    QAction* newDirAction;
+    QAction* deleteAction;
+    QAbstractItemView* contextMenuView;
+
+
 };
 
 #endif // MAINWIDGET_H
