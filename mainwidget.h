@@ -27,6 +27,7 @@ private slots:
     void copy();
     bool copy_file(const QString &sourcePath, const QString &destinationPath);
     bool copy_directory(const QString &sourcePath, const QString &destinationPath, bool isRoot);
+    void move();
 
 
     QFileSystemModel* setup_file_system_model(QDir::Filters filter);
@@ -42,6 +43,9 @@ private slots:
     void createNewFile();
     void showContextMenu(const QPoint &pos);
     void deleteSelectedItems();
+
+    QString getUniqueDestinationName(const QString &destinationPath, const QString &baseName);
+
 
 private:
     Ui::MainWidget *ui;

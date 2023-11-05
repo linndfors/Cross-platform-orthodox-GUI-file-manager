@@ -112,6 +112,7 @@ void MainWidget::setup_connections() {
     connect(ui->new_dir, &QPushButton::clicked, this, &MainWidget::prompt_for_folder_name);
     connect(ui->search, &QPushButton::clicked, this, &MainWidget::search_files);
     connect(ui->copyButton, &QPushButton::clicked, this, &MainWidget::copy);
+    connect(ui->moveButton, &QPushButton::clicked, this, &MainWidget::move);
 }
 
 
@@ -293,6 +294,30 @@ void MainWidget::search_files() {
 
 bool MainWidget::copy_file(const QString &sourcePath, const QString &destinationPath) {
     QFile sourceFile(sourcePath);
+
+    if (QFileInfo(sourcePath).absoluteFilePath() == QFileInfo(destinationPath).absoluteFilePath()) {
+        QString baseName = QFileInfo(sourcePath).completeBaseName();
+        QString extension = QFileInfo(sourcePath).suffix();
+        QString dir = QFileInfo(sourcePath).absolutePath();
+        QString newName = baseName + " - Copy";
+        if (!extension.isEmpty()) {
+            newName += "." + extension;
+        }
+        QString newPath = QDir(dir).absoluteFilePath(newName);
+
+        int copyNumber = 1;
+        while (QFile::exists(newPath)) {
+            // Construct a new filename with a number
+            newName = baseName + " - Copy (" + QString::number(copyNumber++) + ")";
+            if (!extension.isEmpty()) {
+                newName += "." + extension;
+            }
+            newPath = QDir(dir).absoluteFilePath(newName);
+        }
+
+        return QFile::copy(sourcePath, newPath);
+    }
+
     QFile checkDestFile(destinationPath);
 
     if (checkDestFile.exists()) {
@@ -513,6 +538,115 @@ void MainWidget::deleteSelectedItems() {
         }
     }
 }
+
+QString MainWidget::getUniqueDestinationName(const QString &destinationPath, const QString &baseName) {
+    int copyNumber = 0;
+    QString uniqueName;
+    do {
+        uniqueName = destinationPath + "/" + baseName + (copyNumber > 0 ? QString(" - copy(%1)").arg(copyNumber) : "");
+        if (QFileInfo::exists(uniqueName)) {
+            ++copyNumber;
+        } else {
+            break;
+        }
+    } while (true);
+
+    return uniqueName;
+}
+
+
+void MainWidget::move() {
+    QString defaultSourcePath;
+    QModelIndex currentIndex1 = ui->dir_list_1->currentIndex();
+    QModelIndex currentIndex2 = ui->dir_list_2->currentIndex();
+
+    if (currentIndex1.isValid()) {
+        defaultSourcePath = model_1->filePath(currentIndex1);
+    } else if (currentIndex2.isValid()) {
+        defaultSourcePath = model_2->filePath(currentIndex2);
+    } else {
+        defaultSourcePath = model_1->filePath(ui->dir_list_1->rootIndex());
+    }
+
+    bool ok;
+    QString sourcePath = QInputDialog::getText(this, tr("Move from"),
+                                               tr("Source:"), QLineEdit::Normal,
+                                               defaultSourcePath, &ok);
+    if (!ok || sourcePath.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid source path."));
+        return;
+    }
+
+    QString destinationPath = QInputDialog::getText(this, tr("Move to"),
+                                                    tr("Destination:"), QLineEdit::Normal,
+                                                    "", &ok);
+    if (!ok || destinationPath.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
+        return;
+    }
+
+    // Get the unique destination name in case the destination exists
+    QFileInfo sourceInfo(sourcePath);
+    QString baseName = sourceInfo.fileName();
+
+    if (QFileInfo::exists(destinationPath + "/" + baseName)) {
+        destinationPath = getUniqueDestinationName(destinationPath, baseName);
+    }
+
+    if (sourceInfo.isDir()) {
+        QDir sourceDir(sourcePath);
+        QString destinationDirPath = destinationPath;
+
+        if (!sourceDir.exists()) {
+            QMessageBox::warning(this, tr("Error"), tr("Source directory does not exist."));
+            return;
+        }
+
+        QDir destDir(destinationDirPath);
+
+        // If the destination is a directory, append the source directory name to the destination path
+        if (destDir.exists()) {
+            destinationDirPath = destDir.filePath(sourceDir.dirName());
+        }
+
+        // Check if the destination with the new directory name exists to get a unique name
+        if (QFileInfo::exists(destinationDirPath)) {
+            destinationDirPath = getUniqueDestinationName(destinationPath, sourceDir.dirName());
+        }
+
+        // Now attempt to move the directory
+        if (!sourceDir.rename(sourcePath, destinationDirPath)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to move the directory."));
+            return;
+        }
+    } else if (sourceInfo.isFile()) {
+        // Check if destination is a directory to get the full destination file path
+        QDir destDir(destinationPath);
+        if (destDir.exists()) {
+            // If the destination is a directory, append the base name to the destination path
+            destinationPath = destDir.filePath(baseName);
+        }
+
+        // Check again if the destination file exists to get a unique name
+        if (QFileInfo::exists(destinationPath)) {
+            destinationPath = getUniqueDestinationName(destDir.absolutePath(), baseName);
+        }
+
+        QFile sourceFile(sourcePath);
+        if (!sourceFile.rename(destinationPath)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to move the file."));
+            return;
+        }
+    }
+
+    QMessageBox::information(this, tr("Success"), tr("Item moved successfully."));
+}
+
+
+
+
+
+
 
 
 
