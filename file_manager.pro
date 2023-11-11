@@ -10,10 +10,14 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwidget.cpp
+    mainwidget.cpp \
+
+INCLUDEPATH += /usr/include/
+LIBS += -L/usr/include/zlib.h -lz
+
 
 HEADERS += \
-    mainwidget.h
+    mainwidget.h \
 
 FORMS += \
     mainwidget.ui
@@ -22,3 +26,6 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+DISTFILES += \
+    CMakeLists.txt \

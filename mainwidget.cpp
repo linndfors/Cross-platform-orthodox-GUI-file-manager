@@ -11,6 +11,18 @@
 #include <QDebug>
 #include <stdint.h>
 #include <QMenu>
+#include <QCoreApplication>
+#include <QDebug>
+#include <zlib.h>
+#include <QProcess>
+
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QComboBox>
+#include <QLineEdit>
+
+
 
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
@@ -30,11 +42,16 @@ MainWidget::MainWidget(QWidget *parent)
     newFileAction = contextMenu->addAction("New File");
     newDirAction = contextMenu->addAction("New Directory");
     deleteAction = contextMenu->addAction("Delete");
+    renameAction = contextMenu->addAction("Rename");
+    copyAction = contextMenu->addAction("Copy");
+
 
 
     connect(newFileAction, &QAction::triggered, this, &MainWidget::createNewFile);
     connect(newDirAction, &QAction::triggered, this, &MainWidget::createNewDirectory);
     connect(deleteAction, &QAction::triggered, this, &MainWidget::deleteSelectedItems);
+    connect(renameAction, &QAction::triggered, this, &MainWidget::renameSelectedItem);
+    connect(copyAction, &QAction::triggered, this, &MainWidget::copySelectedItems);
 
     for (auto listView : {ui->dir_list_1, ui->dir_list_2}) {
         listView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -108,12 +125,18 @@ void MainWidget::setup_connections() {
         connect(listView->selectionModel(), &QItemSelectionModel::currentChanged,
                 this, &MainWidget::display_selected_path);
     }
+    connect(ui->compressButton, &QPushButton::clicked, this, &MainWidget::compressSelectedItems);
     connect(ui->new_file, &QPushButton::clicked, this, &MainWidget::prompt_for_filename);
     connect(ui->new_dir, &QPushButton::clicked, this, &MainWidget::prompt_for_folder_name);
     connect(ui->search, &QPushButton::clicked, this, &MainWidget::search_files);
     connect(ui->copyButton, &QPushButton::clicked, this, &MainWidget::copy);
     connect(ui->moveButton, &QPushButton::clicked, this, &MainWidget::move);
+    // Set up the selection mode for the file lists
+    ui->dir_list_1->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    ui->dir_list_2->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
 }
+
 
 
 
@@ -438,6 +461,56 @@ void MainWidget::copy() {
     }
 }
 
+void MainWidget::copySelectedItems() {
+    if (!contextMenuView) return;
+
+    QAbstractItemView* view = contextMenuView;
+    QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
+
+    if (selectedIndexes.isEmpty()) {
+        qDebug() << "No selected items.";
+        return;
+    }
+
+    QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
+    if (!model) {
+        qDebug() << "Model is not a QFileSystemModel";
+        return;
+    }
+
+    for (const QModelIndex& index : selectedIndexes) {
+        QFileInfo fileInfo = model->fileInfo(index);
+        if (fileInfo.exists()) {
+            QString currentDirPath = model->filePath(view->rootIndex());
+
+            QString baseName = fileInfo.completeBaseName();
+            QString extension = fileInfo.suffix();
+
+            QString copyName = baseName + "_copy";
+
+            QString copyPath = QDir(currentDirPath).filePath(copyName);
+
+            int counter = 1;
+            while (QFile::exists(copyPath + "." + extension)) {
+                copyPath = QDir(currentDirPath).filePath(QString("%1_%2_copy").arg(baseName).arg(counter));
+                counter++;
+            }
+
+            // If it's a directory, copy recursively
+            if (fileInfo.isDir()) {
+                if (!copy_directory(fileInfo.absoluteFilePath(), copyPath)) {
+                    qDebug() << "Failed to copy directory:" << fileInfo.absoluteFilePath();
+                }
+            } else if (fileInfo.isFile()) {
+                if (!copy_file(fileInfo.absoluteFilePath(), copyPath + "." + extension)) {
+                    qDebug() << "Failed to copy file:" << fileInfo.absoluteFilePath();
+                }
+            }
+        }
+    }
+}
+
+
 void MainWidget::showContextMenu(const QPoint &pos) {
     QObject* senderObject = sender();
     if (!senderObject) return;
@@ -538,6 +611,36 @@ void MainWidget::deleteSelectedItems() {
         }
     }
 }
+
+void MainWidget::renameSelectedItem() {
+    if (!contextMenuView) return;
+
+    QAbstractItemView* view = contextMenuView;
+    QModelIndex currentIndex = view->currentIndex();
+
+    if (!currentIndex.isValid()) {
+        qDebug() << "No selected item to rename";
+        return;
+    }
+
+    QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
+    if (!model) return;
+
+    QFileInfo fileInfo = model->fileInfo(currentIndex);
+    QString oldFilePath = fileInfo.absoluteFilePath();
+
+    bool ok;
+    QString newName = QInputDialog::getText(this, tr("Rename Item"),
+                                            tr("New Name:"), QLineEdit::Normal,
+                                            fileInfo.fileName(), &ok);
+    if (ok && !newName.isEmpty()) {
+        QString newFilePath = QDir(fileInfo.absolutePath()).filePath(newName);
+        if (!QFile::rename(oldFilePath, newFilePath)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to rename the item."));
+        }
+    }
+}
+
 
 QString MainWidget::getUniqueDestinationName(const QString &destinationPath, const QString &baseName) {
     int copyNumber = 0;
@@ -642,6 +745,137 @@ void MainWidget::move() {
     QMessageBox::information(this, tr("Success"), tr("Item moved successfully."));
 }
 
+
+
+class CompressionDialog : public QDialog {
+public:
+    CompressionDialog(QWidget* parent = nullptr) : QDialog(parent) {
+        setWindowTitle("Compression Settings");
+
+        QVBoxLayout* layout = new QVBoxLayout(this);
+
+        QLabel* formatLabel = new QLabel("Select Archive Format:", this);
+        layout->addWidget(formatLabel);
+
+        formatComboBox = new QComboBox(this);
+        formatComboBox->addItems(QStringList() << "zip" << "rar" << "tar.xz");
+        layout->addWidget(formatComboBox);
+
+        QLabel* baseNameLabel = new QLabel("Base Name for Archive:", this);
+        layout->addWidget(baseNameLabel);
+
+        baseNameLineEdit = new QLineEdit(this);
+        layout->addWidget(baseNameLineEdit);
+
+        QHBoxLayout* buttonLayout = new QHBoxLayout;
+
+        QPushButton* cancelButton = new QPushButton("Cancel", this);
+        connect(cancelButton, &QPushButton::clicked, this, &CompressionDialog::reject);
+        buttonLayout->addWidget(cancelButton);
+
+        QPushButton* okButton = new QPushButton("OK", this);
+        connect(okButton, &QPushButton::clicked, this, &CompressionDialog::accept);
+        buttonLayout->addWidget(okButton);
+
+        layout->addLayout(buttonLayout);
+    }
+
+    QComboBox* getFormatComboBox() const {
+        return formatComboBox;
+    }
+
+    QLineEdit* getBaseNameLineEdit() const {
+        return baseNameLineEdit;
+    }
+
+private:
+    QComboBox* formatComboBox;
+    QLineEdit* baseNameLineEdit;
+};
+
+void MainWidget::compressSelectedItems() {
+    QStringList selectedFiles;
+
+    // Determine the selected items based on the active view
+    QAbstractItemView* view = ui->dir_list_1;  // Replace with the correct view variable
+    QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
+
+    if (selectedIndexes.isEmpty()) {
+        qDebug() << "No selected items.";
+        return;
+    }
+
+    QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
+    if (!model) {
+        qDebug() << "Model is not a QFileSystemModel";
+        return;
+    }
+
+    // Collect absolute file paths of selected items
+    for (const QModelIndex& index : selectedIndexes) {
+        QFileInfo fileInfo = model->fileInfo(index);
+        if (fileInfo.exists()) {
+            selectedFiles << fileInfo.fileName();  // Only add the file name, not the full path
+        }
+    }
+
+    if (selectedFiles.isEmpty()) {
+        qDebug() << "No valid selected files.";
+        return;
+    }
+
+    // Create and show the compression settings dialog
+    CompressionDialog compressionDialog(this);
+    if (compressionDialog.exec() != QDialog::Accepted) {
+        qDebug() << "User canceled.";
+        return;
+    }
+
+    // Retrieve values from the dialog
+    QString format = compressionDialog.getFormatComboBox()->currentText();
+    QString baseName = compressionDialog.getBaseNameLineEdit()->text();
+
+    if (baseName.isEmpty()) {
+        qDebug() << "Invalid base name.";
+        return;
+    }
+
+    int archiveNumber = 1;
+    QString archiveName;
+    QString workingDirectory = model->filePath(view->rootIndex());
+    QString destinationPath;
+
+    // Construct the destination path in the same directory with the user-specified name and extension
+    do {
+        archiveName = QString("%1%2.%3").arg(baseName).arg(archiveNumber++).arg(format);
+        destinationPath = workingDirectory + "/" + archiveName;
+    } while (QFile::exists(destinationPath));
+
+    // Use QProcess to run the compression command based on the selected format
+    QProcess process;
+    process.setWorkingDirectory(workingDirectory);
+
+    if (format == "zip") {
+        process.start("zip", QStringList() << "-r" << destinationPath << selectedFiles);
+    } else if (format == "rar") {
+        process.start("rar", QStringList() << "a" << destinationPath << selectedFiles);
+    } else if (format == "tar.xz") {
+        process.start("tar", QStringList() << "cJf" << destinationPath << selectedFiles);
+    } else {
+        qDebug() << "Unsupported archive format.";
+        return;
+    }
+
+    // Debugging information
+    qDebug() << "Executing command:" << process.program() << process.arguments();
+
+    if (process.waitForFinished() && process.exitCode() == 0) {
+        QMessageBox::information(this, "Compression Success", "Files compressed successfully.");
+    } else {
+        qDebug() << "Compression failed. Exit code:" << process.exitCode();
+        QMessageBox::warning(this, "Compression Error", "Failed to compress files.");
+    }
+}
 
 
 

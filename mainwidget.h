@@ -43,6 +43,10 @@ private slots:
     void createNewFile();
     void showContextMenu(const QPoint &pos);
     void deleteSelectedItems();
+    void renameSelectedItem();
+    void compressSelectedItems();
+    void copySelectedItems();
+
 
     QString getUniqueDestinationName(const QString &destinationPath, const QString &baseName);
 
@@ -55,6 +59,8 @@ private:
     QAction* newFileAction;
     QAction* newDirAction;
     QAction* deleteAction;
+    QAction* renameAction;
+    QAction* copyAction;
     QAbstractItemView* contextMenuView;
 
 
