@@ -840,15 +840,21 @@ void MainWidget::compressSelectedItems() {
         return;
     }
 
-    int archiveNumber = 1;
-    QString archiveName;
     QString workingDirectory = model->filePath(view->rootIndex());
+
+    // Determine the unique archive name
+    QString archiveName = baseName;
+    int archiveNumber = 0;
     QString destinationPath;
 
-    // Construct the destination path in the same directory with the user-specified name and extension
     do {
-        archiveName = QString("%1%2.%3").arg(baseName).arg(archiveNumber++).arg(format);
-        destinationPath = workingDirectory + "/" + archiveName;
+        if (archiveNumber > 0) {
+            archiveName = QString("%1(%2)").arg(baseName).arg(archiveNumber);
+        }
+
+        destinationPath = workingDirectory + "/" + archiveName + "." + format;
+        ++archiveNumber;
+
     } while (QFile::exists(destinationPath));
 
     // Use QProcess to run the compression command based on the selected format
@@ -876,6 +882,7 @@ void MainWidget::compressSelectedItems() {
         QMessageBox::warning(this, "Compression Error", "Failed to compress files.");
     }
 }
+
 
 
 
