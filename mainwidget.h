@@ -4,6 +4,7 @@
 #include <QFileSystemModel>
 #include <QTreeView>
 #include <QWidget>
+#include <QKeyEvent>
 #include <QDir>
 
 namespace Ui {
@@ -49,6 +50,23 @@ private slots:
 
 
     QString getUniqueDestinationName(const QString &destinationPath, const QString &baseName);
+
+protected:
+    void keyPressEvent(QKeyEvent *event) override {
+        // Handle Ctrl+C (copy) shortcut
+        if (event->matches(QKeySequence::Copy)) {
+            copySelectedItems();
+        }
+        // Handle Ctrl+V (paste) shortcut
+        else if (event->matches(QKeySequence::Paste)) {
+            // Implement your paste logic here
+            // For example, you can call a paste function
+            // pasteSelectedItems();
+        } else {
+            // Call the base class implementation for other key events
+            QWidget::keyPressEvent(event);
+        }
+    }
 
 
 private:

@@ -331,7 +331,7 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
         int copyNumber = 1;
         while (QFile::exists(newPath)) {
             // Construct a new filename with a number
-            newName = baseName + " - Copy (" + QString::number(copyNumber++) + ")";
+            newName = baseName + "(" + QString::number(copyNumber++) + ")";
             if (!extension.isEmpty()) {
                 newName += "." + extension;
             }
@@ -432,11 +432,15 @@ void MainWidget::copy() {
                                                tr("Source:"), QLineEdit::Normal,
                                                defaultSourcePath, &ok);
     if (ok && !sourcePath.isEmpty()) {
-        QString defaultDestinationPath = "";
+        QString defaultDestinationPath = sourcePath;
 
         QString destinationPath = QInputDialog::getText(this, tr("Copy to"),
                                                         tr("Destination:"), QLineEdit::Normal,
                                                         defaultDestinationPath, &ok);
+        if (sourcePath == destinationPath) {
+            QMessageBox::warning(this, tr("Error"), tr("Cannot copy to the source."));
+            return;
+        }
         if (ok && !destinationPath.isEmpty()) {
             QFileInfo sourceInfo(sourcePath);
             QFileInfo destinationInfo(destinationPath);
@@ -682,7 +686,11 @@ void MainWidget::move() {
 
     QString destinationPath = QInputDialog::getText(this, tr("Move to"),
                                                     tr("Destination:"), QLineEdit::Normal,
-                                                    "", &ok);
+                                                    sourcePath, &ok);
+    if (sourcePath == destinationPath) {
+        QMessageBox::warning(this, tr("Error"), tr("Cannot move to the source."));
+        return;
+    }
     if (!ok || destinationPath.isEmpty()) {
         QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
         return;
@@ -814,6 +822,12 @@ void MainWidget::compressSelectedItems() {
     // Collect absolute file paths of selected items
     for (const QModelIndex& index : selectedIndexes) {
         QFileInfo fileInfo = model->fileInfo(index);
+        QString filePath = fileInfo.filePath();
+        if (!fileInfo.isReadable()) {
+            qDebug() << "Permission denied: " << filePath;
+            QMessageBox::warning(this, "Permission Denied", "You don't have permission to open: " + filePath);
+            return;
+        }
         if (fileInfo.exists()) {
             selectedFiles << fileInfo.fileName();  // Only add the file name, not the full path
         }
