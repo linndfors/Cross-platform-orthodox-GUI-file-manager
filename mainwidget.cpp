@@ -769,13 +769,13 @@ public:
 
         QHBoxLayout* buttonLayout = new QHBoxLayout;
 
-        QPushButton* cancelButton = new QPushButton("Cancel", this);
-        connect(cancelButton, &QPushButton::clicked, this, &CompressionDialog::reject);
-        buttonLayout->addWidget(cancelButton);
-
         QPushButton* okButton = new QPushButton("OK", this);
         connect(okButton, &QPushButton::clicked, this, &CompressionDialog::accept);
         buttonLayout->addWidget(okButton);
+
+        QPushButton* cancelButton = new QPushButton("Cancel", this);
+        connect(cancelButton, &QPushButton::clicked, this, &CompressionDialog::reject);
+        buttonLayout->addWidget(cancelButton);
 
         layout->addLayout(buttonLayout);
     }
