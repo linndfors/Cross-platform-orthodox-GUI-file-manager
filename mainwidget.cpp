@@ -67,7 +67,7 @@ MainWidget::MainWidget(QWidget *parent)
 
 void MainWidget::setup_models() {
     model_1 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDot);
-    model_2 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden);
+    model_2 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDot | QDir::Hidden);
 }
 
 
