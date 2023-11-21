@@ -27,7 +27,7 @@ private slots:
     void prompt_for_folder_name();
     void copy();
     bool copy_file(const QString &sourcePath, const QString &destinationPath);
-    bool copy_directory(const QString &sourcePath, const QString &destinationPath, bool isRoot);
+    bool copy_directory(const QString &sourcePath, const QString &destinationPath);
     void move();
 
 

@@ -322,15 +322,15 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
         QString baseName = QFileInfo(sourcePath).completeBaseName();
         QString extension = QFileInfo(sourcePath).suffix();
         QString dir = QFileInfo(sourcePath).absolutePath();
-        QString newName = baseName + " - Copy";
+        QString newName = baseName + "(1)";
         if (!extension.isEmpty()) {
             newName += "." + extension;
         }
         QString newPath = QDir(dir).absoluteFilePath(newName);
 
-        int copyNumber = 1;
+        int copyNumber = 2; // Start with index 2, since we already used index 1
         while (QFile::exists(newPath)) {
-            // Construct a new filename with a number
+            // Construct a new filename with a number in brackets
             newName = baseName + "(" + QString::number(copyNumber++) + ")";
             if (!extension.isEmpty()) {
                 newName += "." + extension;
@@ -347,7 +347,7 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
         auto reply = QMessageBox::question(this, "File Exists",
                                            "The file already exists. Do you want to overwrite it?",
                                            QMessageBox::Yes | QMessageBox::No);
-        if (reply != QMessageBox::No) {
+        if (reply != QMessageBox::Yes) {
             return false;
         }
     }
@@ -373,19 +373,15 @@ bool MainWidget::copy_file(const QString &sourcePath, const QString &destination
 }
 
 
-bool MainWidget::copy_directory(const QString &sourcePath, const QString &destinationPath, bool isRoot=true) {
+
+bool MainWidget::copy_directory(const QString &sourcePath, const QString &destinationPath) {
     QDir sourceDir(sourcePath);
     if (!sourceDir.exists()) {
         qWarning() << "Source directory does not exist:" << sourcePath;
         return false;
     }
 
-    QString finalDestinationPath;
-    if (isRoot) {
-        finalDestinationPath = destinationPath + QDir::separator() + sourceDir.dirName();
-    } else {
-        finalDestinationPath = destinationPath;
-    }
+    QString finalDestinationPath = destinationPath;
 
     QDir destDir(finalDestinationPath);
     if (!destDir.exists()) {
@@ -394,15 +390,27 @@ bool MainWidget::copy_directory(const QString &sourcePath, const QString &destin
 
     QFileInfoList fileInfoList = sourceDir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
 
+    // Create a new folder in the destination path
+    QString newFolderName = sourceDir.dirName() + "(1)";
+    QString newFolderPath = QDir(finalDestinationPath).absoluteFilePath(newFolderName);
+    int copyNumber = 2;
+    while (QDir(newFolderPath).exists()) {
+        newFolderName = sourceDir.dirName() + "(" + QString::number(copyNumber++) + ")";
+        newFolderPath = QDir(finalDestinationPath).absoluteFilePath(newFolderName);
+    }
+    destDir.mkpath(newFolderPath);
+
     for (const QFileInfo &fileInfo : fileInfoList) {
         const QString sourceFilePath = fileInfo.absoluteFilePath();
-        const QString destFilePath = finalDestinationPath + QDir::separator() + fileInfo.fileName();
+        const QString destFilePath = newFolderPath + QDir::separator() + fileInfo.fileName();
 
         if (fileInfo.isDir()) {
-            if (!copy_directory(sourceFilePath, destFilePath, false)) {
+            // Recursively copy subdirectories
+            if (!copy_directory(sourceFilePath, newFolderPath)) {
                 return false;
             }
         } else if (fileInfo.isFile()) {
+            // Copy files into the new folder
             QFile::copy(sourceFilePath, destFilePath);
         } else {
             qWarning() << "Unsupported file type:" << sourceFilePath;
@@ -412,6 +420,10 @@ bool MainWidget::copy_directory(const QString &sourcePath, const QString &destin
 
     return true;
 }
+
+
+
+
 
 
 void MainWidget::copy() {
@@ -450,6 +462,7 @@ void MainWidget::copy() {
                     QMessageBox::warning(this, tr("Error"), tr("Cannot copy a directory to a file."));
                     return;
                 }
+                qDebug() << "this is directory";
                 copy_directory(sourcePath, destinationPath);
             } else if (sourceInfo.isFile()) {
                 if (destinationInfo.isDir()) {
@@ -487,27 +500,15 @@ void MainWidget::copySelectedItems() {
         if (fileInfo.exists()) {
             QString currentDirPath = model->filePath(view->rootIndex());
 
-            QString baseName = fileInfo.completeBaseName();
-            QString extension = fileInfo.suffix();
-
-            QString copyName = baseName + "_copy";
-
-            QString copyPath = QDir(currentDirPath).filePath(copyName);
-
-            int counter = 1;
-            while (QFile::exists(copyPath + "." + extension)) {
-                copyPath = QDir(currentDirPath).filePath(QString("%1_%2_copy").arg(baseName).arg(counter));
-                counter++;
-            }
-
             // If it's a directory, copy recursively
             if (fileInfo.isDir()) {
-                if (!copy_directory(fileInfo.absoluteFilePath(), copyPath)) {
-                    qDebug() << "Failed to copy directory:" << fileInfo.absoluteFilePath();
+                if (!copy_directory(fileInfo.absoluteFilePath(), currentDirPath)) {
+                    qWarning() << "Failed to copy directory:" << fileInfo.absoluteFilePath();
                 }
             } else if (fileInfo.isFile()) {
-                if (!copy_file(fileInfo.absoluteFilePath(), copyPath + "." + extension)) {
-                    qDebug() << "Failed to copy file:" << fileInfo.absoluteFilePath();
+                QString destinationPath = QDir(currentDirPath).absoluteFilePath(fileInfo.fileName());
+                if (!copy_file(fileInfo.absoluteFilePath(), destinationPath)) {
+                    qWarning() << "Failed to copy file:" << fileInfo.absoluteFilePath();
                 }
             }
         }
