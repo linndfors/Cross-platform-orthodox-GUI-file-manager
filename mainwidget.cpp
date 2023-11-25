@@ -663,6 +663,58 @@ QString MainWidget::getUniqueDestinationName(const QString &destinationPath, con
 }
 
 
+void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite) {
+    QStringList sourceEntries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const QString &entry : sourceEntries) {
+        QString sourcePath = sourceDir.absoluteFilePath(entry);
+        QString destPath = destDir.absoluteFilePath(entry);
+
+        QFileInfo fileInfo(sourcePath);
+        if (fileInfo.isDir()) {
+            QDir subSourceDir(sourcePath);
+            QDir subDestDir(destPath);
+            if (!subDestDir.exists()) {
+                subDestDir.mkpath(".");
+            }
+            mergeDirectories(subSourceDir, subDestDir, overwrite);
+        } else if (fileInfo.isFile()) {
+            if (overwrite || !QFileInfo::exists(destPath)) {
+                QFile::remove(destPath);
+                QFile::copy(sourcePath, destPath);
+            }QFile::remove(sourcePath);
+        }
+    }
+
+    // Optionally, remove the source directory after merging
+     sourceDir.removeRecursively();
+}
+
+
+
+void MainWidget::handleDirectoryMerge(QDir& sourceDir, QDir& destDir) {
+    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
+    QStringList identicalFiles;
+
+    for (const QString &file : sourceFiles) {
+        if (destDir.exists(file)) {
+            identicalFiles.append(file);
+        }
+    }
+
+    bool overwrite = false;
+    if (!identicalFiles.isEmpty()) {
+        QMessageBox::StandardButton reply;
+        QString question = tr("The directory contains %1 identical files. Do you want to overwrite them?").arg(identicalFiles.size());
+        reply = QMessageBox::question(this, tr("Overwrite Files?"), question, QMessageBox::Yes|QMessageBox::No);
+        overwrite = (reply == QMessageBox::Yes);
+    }
+
+    mergeDirectories(sourceDir, destDir, overwrite);
+}
+
+
+
 void MainWidget::move() {
     QString defaultSourcePath;
     QModelIndex currentIndex1 = ui->dir_list_1->currentIndex();
@@ -692,6 +744,7 @@ void MainWidget::move() {
         QMessageBox::warning(this, tr("Error"), tr("Cannot move to the source."));
         return;
     }
+
     if (!ok || destinationPath.isEmpty()) {
         QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
         return;
@@ -701,13 +754,13 @@ void MainWidget::move() {
     QFileInfo sourceInfo(sourcePath);
     QString baseName = sourceInfo.fileName();
 
-    if (QFileInfo::exists(destinationPath + "/" + baseName)) {
-        destinationPath = getUniqueDestinationName(destinationPath, baseName);
-    }
+    //    if (QFileInfo::exists(destinationPath + "/" + baseName)) {
+    //        destinationPath = getUniqueDestinationName(destinationPath, baseName);
+    //    }
 
     if (sourceInfo.isDir()) {
         QDir sourceDir(sourcePath);
-        QString destinationDirPath = destinationPath;
+        QString destinationDirPath = destinationPath + "/" + baseName;
 
         if (!sourceDir.exists()) {
             QMessageBox::warning(this, tr("Error"), tr("Source directory does not exist."));
@@ -716,20 +769,23 @@ void MainWidget::move() {
 
         QDir destDir(destinationDirPath);
 
-        // If the destination is a directory, append the source directory name to the destination path
+
         if (destDir.exists()) {
-            destinationDirPath = destDir.filePath(sourceDir.dirName());
-        }
-
-        // Check if the destination with the new directory name exists to get a unique name
-        if (QFileInfo::exists(destinationDirPath)) {
-            destinationDirPath = getUniqueDestinationName(destinationPath, sourceDir.dirName());
-        }
-
-        // Now attempt to move the directory
-        if (!sourceDir.rename(sourcePath, destinationDirPath)) {
-            QMessageBox::warning(this, tr("Error"), tr("Failed to move the directory."));
+            // Handle merging directories
+            //            qDebug() << "This is a debug message";
+            handleDirectoryMerge(sourceDir, destDir);
             return;
+        } else {
+            // Normal move operation
+//            if (!sourceDir.rename(sourceDir.absolutePath(), destinationPath)) {
+//                QMessageBox::warning(this, tr("Error"), tr("Failed to move the directory."));
+//                return;
+//            }
+            if (!copy_directory(sourceDir.absolutePath(), destinationPath)) {
+                QMessageBox::warning(this, tr("Error"), tr("Failed to move the directory."));
+            } else {
+                sourceDir.removeRecursively(); // Remove the original directory after successful copy
+            }
         }
     } else if (sourceInfo.isFile()) {
         // Check if destination is a directory to get the full destination file path
@@ -741,7 +797,20 @@ void MainWidget::move() {
 
         // Check again if the destination file exists to get a unique name
         if (QFileInfo::exists(destinationPath)) {
-            destinationPath = getUniqueDestinationName(destDir.absolutePath(), baseName);
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(this, tr("File Exists"),
+                                          tr("The file %1 already exists at the destination. Do you want to overwrite it?").arg(baseName),
+                                          QMessageBox::Yes | QMessageBox::No);
+
+            if (reply == QMessageBox::Yes) {
+                // User chose to overwrite the file
+                // Remove the existing file at the destination
+                QFile::remove(destinationPath);
+            } else {
+                // User chose not to overwrite the file
+                // Exit the function, skipping the move operation for this file
+                return;
+            }
         }
 
         QFile sourceFile(sourcePath);

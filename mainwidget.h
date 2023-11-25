@@ -29,6 +29,8 @@ private slots:
     bool copy_file(const QString &sourcePath, const QString &destinationPath);
     bool copy_directory(const QString &sourcePath, const QString &destinationPath);
     void move();
+    void handleDirectoryMerge(QDir& sourceDir, QDir& destDir);
+    void mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite);
 
 
     QFileSystemModel* setup_file_system_model(QDir::Filters filter);
