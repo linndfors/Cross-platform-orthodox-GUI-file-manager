@@ -391,9 +391,9 @@ bool MainWidget::copy_directory(const QString &sourcePath, const QString &destin
     QFileInfoList fileInfoList = sourceDir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
 
     // Create a new folder in the destination path
-    QString newFolderName = sourceDir.dirName() + "(1)";
+    QString newFolderName = sourceDir.dirName();
     QString newFolderPath = QDir(finalDestinationPath).absoluteFilePath(newFolderName);
-    int copyNumber = 2;
+    int copyNumber = 1;
     while (QDir(newFolderPath).exists()) {
         newFolderName = sourceDir.dirName() + "(" + QString::number(copyNumber++) + ")";
         newFolderPath = QDir(finalDestinationPath).absoluteFilePath(newFolderName);
