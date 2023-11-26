@@ -62,6 +62,7 @@ void MainWidget::setup_models() {
 QFileSystemModel* MainWidget::setup_file_system_model(QDir::Filters filter) {
     auto model = new QFileSystemModel(this);
     model->setFilter(filter);
+    model->sort(0, Qt::AscendingOrder);
     model->setRootPath(QDir::homePath());
     return model;
 }

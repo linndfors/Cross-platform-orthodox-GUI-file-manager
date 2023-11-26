@@ -7,10 +7,9 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # Set the path to the directory containing Qt5Config.cmake
-#set(Qt6_DIR "/home/olha_nahurna/Qt/6.6.0/gcc_64/lib/cmake/Qt6")
+#set(Qt6_DIR "/home/nickolay/Qt/6.6.0/gcc_64/lib/cmake/Qt6")
 
-#find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
-find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
 
 
 add_executable(file_manager
@@ -20,9 +19,9 @@ add_executable(file_manager
 )
 
 target_link_libraries(file_manager
-    Qt5::Core
-    Qt5::Gui
-    Qt5::Widgets
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
 )
 
 # Default rules for deployment.
