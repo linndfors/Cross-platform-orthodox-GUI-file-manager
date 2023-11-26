@@ -23,8 +23,6 @@ private slots:
     void search_files();
     void setup_models();
     void setup_connections();
-    void prompt_for_filename();
-    void prompt_for_folder_name();
     void copy();
     bool copy_file(const QString &sourcePath, const QString &destinationPath);
     bool copy_directory(const QString &sourcePath, const QString &destinationPath);
@@ -35,7 +33,7 @@ private slots:
 
     QFileSystemModel* setup_file_system_model(QDir::Filters filter);
     void setup_tree_view(QTreeView *view, QFileSystemModel *model);
-
+    void setup_view(QAbstractItemView* view, QFileSystemModel* model);
     void display_selected_path(const QModelIndex &index);
 
     void on_fileList_doubleClicked(const QModelIndex &index);
@@ -50,8 +48,6 @@ private slots:
     void compressSelectedItems();
     void copySelectedItems();
 
-
-    QString getUniqueDestinationName(const QString &destinationPath, const QString &baseName);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override {
