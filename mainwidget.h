@@ -54,7 +54,8 @@ private slots:
     void renameSelectedItem();
     void compressSelectedItems();
     void copySelectedItems();
-
+    void showSortDialog();
+    void compareDirectories();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override {
@@ -79,12 +80,15 @@ private:
     Ui::MainWidget *ui;
     QFileSystemModel *model_1;
     QFileSystemModel *model_2;
+    QStringList similarFiles;
+    QStringList differentFiles;
     QMenu* contextMenu;
     QAction* newFileAction;
     QAction* newDirAction;
     QAction* deleteAction;
     QAction* renameAction;
     QAction* copyAction;
+    QAction* sortAction;
     QAbstractItemView* contextMenuView;
     QString determineDestinationPath(QObject *dropTarget);
     void moveItem(QString &sourcePath, QString &destinationPath);

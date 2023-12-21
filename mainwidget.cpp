@@ -9,7 +9,8 @@
 #include <QDebug>
 #include <QMenu>
 #include <QProcess>
-
+#include <QRadioButton>
+#include <QGroupBox>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QComboBox>
@@ -34,6 +35,8 @@ MainWidget::MainWidget(QWidget* parent)
     deleteAction = contextMenu->addAction("Delete");
     renameAction = contextMenu->addAction("Rename");
     copyAction = contextMenu->addAction("Copy");
+    sortAction = contextMenu->addAction("Sort by");
+
 
 
     connect(newFileAction, &QAction::triggered, this, &MainWidget::createNewFile);
@@ -41,6 +44,8 @@ MainWidget::MainWidget(QWidget* parent)
     connect(deleteAction, &QAction::triggered, this, &MainWidget::deleteSelectedItems);
     connect(renameAction, &QAction::triggered, this, &MainWidget::renameSelectedItem);
     connect(copyAction, &QAction::triggered, this, &MainWidget::copySelectedItems);
+    connect(sortAction, &QAction::triggered, this, &MainWidget::showSortDialog);
+
 
     for (auto listView: {ui->dir_list_1, ui->dir_list_2}) {
         listView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -68,7 +73,7 @@ MainWidget::MainWidget(QWidget* parent)
 
 void MainWidget::setup_models() {
     model_1 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDot);
-    model_2 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDot | QDir::Hidden);
+    model_2 = setup_file_system_model(QDir::Dirs | QDir::Files | QDir::NoDot);
 }
 
 QFileSystemModel* MainWidget::setup_file_system_model(QDir::Filters filter) {
@@ -135,7 +140,7 @@ void MainWidget::setup_connections() {
     connect(ui->search, &QPushButton::clicked, this, &MainWidget::search_files);
     connect(ui->copyButton, &QPushButton::clicked, this, &MainWidget::copy);
     connect(ui->moveButton, &QPushButton::clicked, this, &MainWidget::move);
-    // Set up the selection mode for the file lists
+    connect(ui->compareButton, &QPushButton::clicked, this, &MainWidget::compareDirectories);
     ui->dir_list_1->setSelectionMode(QAbstractItemView::ExtendedSelection);
     ui->dir_list_2->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
@@ -208,6 +213,156 @@ void MainWidget::display_selected_path(const QModelIndex& index) {
         ui->path_2->setText(fileInfo.absoluteFilePath());
     }
 }
+
+class SortDialog : public QDialog {
+public:
+    SortDialog(QWidget* parent = nullptr) : QDialog(parent) {
+        setWindowTitle("Sort Options");
+
+        QVBoxLayout* layout = new QVBoxLayout(this);
+
+        QGroupBox* groupBox = new QGroupBox("Sort By", this);
+        QVBoxLayout* groupBoxLayout = new QVBoxLayout(groupBox);
+
+        nameRadioButton = new QRadioButton("Name", this);
+        sizeRadioButton = new QRadioButton("Size", this);
+        dateRadioButton = new QRadioButton("Date", this);
+
+        groupBoxLayout->addWidget(nameRadioButton);
+        groupBoxLayout->addWidget(sizeRadioButton);
+        groupBoxLayout->addWidget(dateRadioButton);
+
+        groupBox->setLayout(groupBoxLayout);
+
+        layout->addWidget(groupBox);
+
+        QHBoxLayout* buttonLayout = new QHBoxLayout;
+
+        QPushButton* okButton = new QPushButton("OK", this);
+        connect(okButton, &QPushButton::clicked, this, &SortDialog::accept);
+        buttonLayout->addWidget(okButton);
+
+        QPushButton* cancelButton = new QPushButton("Cancel", this);
+        connect(cancelButton, &QPushButton::clicked, this, &SortDialog::reject);
+        buttonLayout->addWidget(cancelButton);
+
+        layout->addLayout(buttonLayout);
+    }
+
+    QRadioButton* getNameRadioButton() const {
+        return nameRadioButton;
+    }
+
+    QRadioButton* getSizeRadioButton() const {
+        return sizeRadioButton;
+    }
+
+    QRadioButton* getDateRadioButton() const {
+        return dateRadioButton;
+    }
+
+    int getSortOption() const {
+        if (nameRadioButton->isChecked()) return SortByName;
+        if (sizeRadioButton->isChecked()) return SortBySize;
+        if (dateRadioButton->isChecked()) return SortByDate;
+        return SortByName;  // Default sorting option
+    }
+
+private:
+    QRadioButton* nameRadioButton;
+    QRadioButton* sizeRadioButton;
+    QRadioButton* dateRadioButton;
+
+public:
+    enum SortOption {
+        SortByName,
+        SortBySize,
+        SortByDate
+    };
+};
+void MainWidget::showSortDialog() {
+    // Create an instance of the custom sorting dialog
+    SortDialog sortDialog(this);
+
+    // Show the dialog and get the result
+    int result = sortDialog.exec();
+
+    // Check if the user clicked OK
+    if (result == QDialog::Accepted) {
+        // Get the chosen sorting option
+        SortDialog::SortOption sortOption = static_cast<SortDialog::SortOption>(sortDialog.getSortOption());
+
+        // Define column indices (consider using constants or enums)
+        const int nameColumn = 0;
+        const int sizeColumn = 1;
+        const int dateColumn = 2;
+
+        // Use the chosen sorting option to sort items
+        switch (sortOption) {
+        case SortDialog::SortByName:
+            model_1->sort(nameColumn, Qt::AscendingOrder);
+            model_2->sort(nameColumn, Qt::AscendingOrder);
+            break;
+        case SortDialog::SortBySize:
+            model_1->sort(sizeColumn, Qt::AscendingOrder);
+            model_2->sort(sizeColumn, Qt::AscendingOrder);
+            break;
+        case SortDialog::SortByDate:
+            model_1->sort(dateColumn, Qt::AscendingOrder);
+            model_2->sort(dateColumn, Qt::AscendingOrder);
+            break;
+        }
+    }
+}
+
+void MainWidget::compareDirectories() {
+    QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
+    bool ok;
+    QString dirPath1 = QInputDialog::getText(this, tr("Enter Source Directory Path"), tr("Source Path:"), QLineEdit::Normal, currentDirPath, &ok);
+
+    if (!ok || dirPath1.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid source path."));
+        return;
+    }
+    QString dirPath2 = QInputDialog::getText(this, tr("Enter Destination Directory Path"), tr("Destination Path:"), QLineEdit::Normal, currentDirPath, &ok);
+
+    if (!ok || dirPath2.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
+        return;
+    }
+    QDir sourceDir(dirPath1);
+    QDir destDir(dirPath2);
+
+    if (!sourceDir.exists() || !destDir.exists()) {
+        QMessageBox::warning(this, tr("Invalid Directories"), tr("Please enter valid directory paths to compare."));
+        return;
+    }
+    QStringList similarFiles;
+    QStringList differentFiles;
+
+    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
+    QStringList destFiles = destDir.entryList(QDir::Files);
+
+    for (const QString& file : sourceFiles) {
+        if (destFiles.contains(file)) {
+            similarFiles.append(file);
+        } else {
+            differentFiles.append(file);
+        }
+    }
+
+    for (const QString& file : destFiles) {
+        if (!sourceFiles.contains(file)) {
+            differentFiles.append(file);
+        }
+    }
+    QString resultMessage = QString("Similar Files:\n%1\n\nDifferent Files:\n%2")
+                                .arg(similarFiles.join("\n"))
+                                .arg(differentFiles.join("\n"));
+
+    QMessageBox::information(this, tr("Directory Comparison Result"), resultMessage);
+}
+
 
 
 void MainWidget::search_files() {

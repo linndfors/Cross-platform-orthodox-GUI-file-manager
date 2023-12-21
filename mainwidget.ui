@@ -38,7 +38,7 @@
       <number>0</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="stuff_buttons" stretch="0,0,0,0,0,0,0">
+      <layout class="QHBoxLayout" name="stuff_buttons" stretch="0,0,0,0,0,0,0,0">
        <property name="spacing">
         <number>20</number>
        </property>
@@ -114,6 +114,13 @@
         <widget class="QPushButton" name="compressButton">
          <property name="text">
           <string>Compress</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="compareButton">
+         <property name="text">
+          <string>Compare</string>
          </property>
         </widget>
        </item>
