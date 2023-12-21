@@ -6,6 +6,10 @@
 #include <QWidget>
 #include <QKeyEvent>
 #include <QDir>
+#include <QMimeData>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QUrl>
 
 namespace Ui {
 class MainWidget;
@@ -68,6 +72,7 @@ protected:
             QWidget::keyPressEvent(event);
         }
     }
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 
 private:
@@ -81,6 +86,8 @@ private:
     QAction* renameAction;
     QAction* copyAction;
     QAbstractItemView* contextMenuView;
+    QString determineDestinationPath(QObject *dropTarget);
+    void moveItem(QString &sourcePath, QString &destinationPath);
 
 
 };

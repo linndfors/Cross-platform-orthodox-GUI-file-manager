@@ -45,12 +45,24 @@ MainWidget::MainWidget(QWidget* parent)
     for (auto listView: {ui->dir_list_1, ui->dir_list_2}) {
         listView->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(listView, &QListView::customContextMenuRequested, this, &MainWidget::showContextMenu);
+        listView->setDragEnabled(true);
+        listView->setAcceptDrops(true);
+        listView->setDropIndicatorShown(true);
+        listView->setDragDropMode(QAbstractItemView::InternalMove);
     }
 
     for (auto treeView: {ui->dir_tree_1, ui->dir_tree_2}) {
         treeView->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(treeView, &QTreeView::customContextMenuRequested, this, &MainWidget::showContextMenu);
+        treeView->setDragEnabled(true);
+        treeView->setAcceptDrops(true);
+        treeView->setDropIndicatorShown(true);
+        treeView->setDragDropMode(QAbstractItemView::InternalMove);
     }
+    ui->dir_list_1->installEventFilter(this);
+    ui->dir_list_2->installEventFilter(this);
+    ui->dir_tree_1->installEventFilter(this);
+    ui->dir_tree_2->installEventFilter(this);
 }
 
 
@@ -910,6 +922,144 @@ void MainWidget::compressSelectedItems() {
     }
 }
 
+
+
+QString MainWidget::determineDestinationPath(QObject *dropTarget) {
+    if (dropTarget == ui->dir_list_1) {
+        // If the drop target is dir_list_1, get the directory path from model_1
+        QModelIndex rootIndex = ui->dir_list_1->rootIndex();
+        return model_1->filePath(rootIndex);
+    } else if (dropTarget == ui->dir_list_2) {
+        // If the drop target is dir_list_2, get the directory path from model_2
+        QModelIndex rootIndex = ui->dir_list_2->rootIndex();
+        return model_2->filePath(rootIndex);
+    }
+
+    // Default case if the drop target is not recognized
+    return QString();
+}
+
+void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
+    QString defaultSourcePath;
+    QModelIndex currentIndex1 = ui->dir_list_1->currentIndex();
+    QModelIndex currentIndex2 = ui->dir_list_2->currentIndex();
+
+    if (currentIndex1.isValid()) {
+        defaultSourcePath = model_1->filePath(currentIndex1);
+    } else if (currentIndex2.isValid()) {
+        defaultSourcePath = model_2->filePath(currentIndex2);
+    } else {
+        defaultSourcePath = model_1->filePath(ui->dir_list_1->rootIndex());
+    }
+
+    if (sourcePath.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid source path."));
+        return;
+    }
+
+    if (sourcePath == destinationPath) {
+        QMessageBox::warning(this, tr("Error"), tr("Cannot move to the source."));
+        return;
+    }
+
+    if (destinationPath.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("Invalid destination path."));
+        return;
+    }
+
+    QFileInfo sourceInfo(sourcePath);
+    QString baseName = sourceInfo.fileName();
+
+    if (sourceInfo.isDir() && sourceInfo.isWritable()) {
+        QDir sourceDir(sourcePath);
+        QString destinationDirPath = destinationPath + "/" + baseName;
+
+        if (!sourceDir.exists()) {
+            QMessageBox::warning(this, tr("Error"), tr("Source directory does not exist."));
+            return;
+        }
+
+        QDir destDir(destinationDirPath);
+
+
+        if (destDir.exists()) {
+            //            handleDirectoryMerge(sourceDir, destDir);
+            mergeDirectories(sourceDir, destDir);
+            return;
+        } else {
+            if (!copy_directory(sourceDir.absolutePath(), destinationPath)) {
+                QMessageBox::warning(this, tr("Error"), tr("Failed to move the directory."));
+            } else {
+                sourceDir.removeRecursively();
+            }
+        }
+    } else if (sourceInfo.isFile() && sourceInfo.isWritable()) {
+        QDir destDir(destinationPath);
+        if (destDir.exists()) {
+            destinationPath = destDir.filePath(baseName);
+        }
+
+        if (QFileInfo::exists(destinationPath)) {
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(this, tr("File Exists"),
+                                          tr("The file %1 already exists at the destination. Do you want to overwrite it?").arg(
+                                              baseName),
+                                          QMessageBox::Yes | QMessageBox::No);
+
+            if (reply == QMessageBox::Yes) {
+                QFile::remove(destinationPath);
+            } else {
+                return;
+            }
+        }
+
+        QFile sourceFile(sourcePath);
+        if (!sourceFile.rename(destinationPath)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to move the file."));
+            return;
+        }
+    } else {
+        return;
+    }
+
+    QMessageBox::information(this, tr("Success"), tr("Item moved successfully."));
+}
+
+
+
+
+bool MainWidget::eventFilter(QObject *obj, QEvent *event) {
+    if (event->type() == QEvent::DragEnter) {
+        auto *dragEnterEvent = static_cast<QDragEnterEvent*>(event);
+        qDebug() << "Drag Enter Event";
+        dragEnterEvent->acceptProposedAction();
+        return true;
+    } else if (event->type() == QEvent::DragMove) {
+        auto *dragMoveEvent = static_cast<QDragMoveEvent*>(event);
+        qDebug() << "Drag Move Event";
+        dragMoveEvent->acceptProposedAction();
+        return true;
+    } else if (event->type() == QEvent::Drop) {
+        auto *dropEvent = static_cast<QDropEvent*>(event);
+        qDebug() << "Drop Event";
+
+        const QMimeData *mimeData = dropEvent->mimeData();
+        if (mimeData->hasUrls()) {
+            QList<QUrl> urls = mimeData->urls();
+            if (!urls.isEmpty()) {
+                QString sourcePath = urls.first().toLocalFile();
+                QString destinationPath = determineDestinationPath(obj);
+
+                if (!sourcePath.isEmpty() && !destinationPath.isEmpty()) {
+                    moveItem(sourcePath, destinationPath);
+                }
+            }
+        }
+        return true;
+    }
+
+    return QWidget::eventFilter(obj, event);
+}
 
 
 
