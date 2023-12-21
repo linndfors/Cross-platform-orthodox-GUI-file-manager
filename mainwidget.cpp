@@ -585,7 +585,64 @@ void MainWidget::renameSelectedItem() {
 }
 
 
-void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite) {
+//void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite) {
+//    QStringList sourceEntries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+//    for (const QString& entry: sourceEntries) {
+//        QString sourcePath = sourceDir.absoluteFilePath(entry);
+//        QString destPath = destDir.absoluteFilePath(entry);
+
+//        QFileInfo fileInfo(sourcePath);
+//        if (fileInfo.isDir()) {
+//            QDir subSourceDir(sourcePath);
+//            QDir subDestDir(destPath);
+//            if (!subDestDir.exists()) {
+//                subDestDir.mkpath(".");
+//            }
+//            mergeDirectories(subSourceDir, subDestDir, overwrite);
+//        } else if (fileInfo.isFile()) {
+//            if (overwrite || !QFileInfo::exists(destPath)) {
+//                QFile::remove(destPath);
+//                QFile::copy(sourcePath, destPath);
+//            }
+//            QFile::remove(sourcePath);
+//        }
+//    }
+
+//    sourceDir.removeRecursively();
+//}
+
+
+//void MainWidget::handleDirectoryMerge(QDir& sourceDir, QDir& destDir) {
+//    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
+//    QStringList identicalFiles;
+
+//    for (const QString& file: sourceFiles) {
+//        if (destDir.exists(file)) {
+//            identicalFiles.append(file);
+//        }
+//    }
+
+//    bool overwrite = false;
+//    if (!identicalFiles.isEmpty()) {
+//        QMessageBox::StandardButton reply;
+//        QString question = tr("The directory contains %1 identical files. Do you want to overwrite them?").arg(
+//                identicalFiles.size());
+//        reply = QMessageBox::question(this, tr("Overwrite Files?"), question, QMessageBox::Yes | QMessageBox::No);
+//        overwrite = (reply == QMessageBox::Yes);
+//    }
+
+//    mergeDirectories(sourceDir, destDir, overwrite);
+//}
+
+bool MainWidget::askUserForOverwrite(const QString& filePath) {
+    QMessageBox::StandardButton reply;
+    QString question = tr("The file %1 already exists. Do you want to overwrite it?").arg(filePath);
+    reply = QMessageBox::question(this, tr("Overwrite File?"), question, QMessageBox::Yes | QMessageBox::No);
+    return (reply == QMessageBox::Yes);
+}
+
+void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir) {
     QStringList sourceEntries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString& entry: sourceEntries) {
@@ -599,10 +656,15 @@ void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite
             if (!subDestDir.exists()) {
                 subDestDir.mkpath(".");
             }
-            mergeDirectories(subSourceDir, subDestDir, overwrite);
+            mergeDirectories(subSourceDir, subDestDir);
         } else if (fileInfo.isFile()) {
-            if (overwrite || !QFileInfo::exists(destPath)) {
-                QFile::remove(destPath);
+            if (QFileInfo::exists(destPath)) {
+                bool overwrite = askUserForOverwrite(destPath); // This function should be implemented to show a dialog box
+                if (overwrite) {
+                    QFile::remove(destPath);
+                    QFile::copy(sourcePath, destPath);
+                }
+            } else {
                 QFile::copy(sourcePath, destPath);
             }
             QFile::remove(sourcePath);
@@ -610,29 +672,6 @@ void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite
     }
 
     sourceDir.removeRecursively();
-}
-
-
-void MainWidget::handleDirectoryMerge(QDir& sourceDir, QDir& destDir) {
-    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
-    QStringList identicalFiles;
-
-    for (const QString& file: sourceFiles) {
-        if (destDir.exists(file)) {
-            identicalFiles.append(file);
-        }
-    }
-
-    bool overwrite = false;
-    if (!identicalFiles.isEmpty()) {
-        QMessageBox::StandardButton reply;
-        QString question = tr("The directory contains %1 identical files. Do you want to overwrite them?").arg(
-                identicalFiles.size());
-        reply = QMessageBox::question(this, tr("Overwrite Files?"), question, QMessageBox::Yes | QMessageBox::No);
-        overwrite = (reply == QMessageBox::Yes);
-    }
-
-    mergeDirectories(sourceDir, destDir, overwrite);
 }
 
 
@@ -687,7 +726,8 @@ void MainWidget::move() {
 
 
         if (destDir.exists()) {
-            handleDirectoryMerge(sourceDir, destDir);
+//            handleDirectoryMerge(sourceDir, destDir);
+            mergeDirectories(sourceDir, destDir);
             return;
         } else {
             if (!copy_directory(sourceDir.absolutePath(), destinationPath)) {
