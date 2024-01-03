@@ -1139,6 +1139,19 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
 
     QFileInfo sourceInfo(sourcePath);
     QString baseName = sourceInfo.fileName();
+    QString dirPath = sourceInfo.absolutePath();
+
+
+    if (dirPath == destinationPath) {
+        QMessageBox::warning(this, tr("Error"), tr("Item cannot be moved within the same directory."));
+        return;
+    }
+
+    qDebug() << baseName;
+    qDebug() << dirPath;
+
+//    QFileInfo sourceInfo(sourcePath);
+//    QString baseName = sourceInfo.fileName();
 
     if (sourceInfo.isDir() && sourceInfo.isWritable()) {
         QDir sourceDir(sourcePath);
