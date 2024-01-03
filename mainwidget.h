@@ -90,7 +90,7 @@ private:
     QAction* copyAction;
     QAction* sortAction;
     QAbstractItemView* contextMenuView;
-    QString determineDestinationPath(QObject *dropTarget);
+    QString determineDestinationPath(QObject *dropTarget, const QPoint &dropPosition);
     void moveItem(QString &sourcePath, QString &destinationPath);
 
 

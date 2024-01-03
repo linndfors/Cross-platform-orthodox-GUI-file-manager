@@ -47,6 +47,11 @@ MainWidget::MainWidget(QWidget* parent)
     connect(sortAction, &QAction::triggered, this, &MainWidget::showSortDialog);
 
 
+    ui->dir_list_1->setDragDropMode(QAbstractItemView::InternalMove);
+    ui->dir_list_2->setDragDropMode(QAbstractItemView::InternalMove);
+    ui->dir_tree_1->setDragDropMode(QAbstractItemView::InternalMove);
+    ui->dir_tree_2->setDragDropMode(QAbstractItemView::InternalMove);
+
     for (auto listView: {ui->dir_list_1, ui->dir_list_2}) {
         listView->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(listView, &QListView::customContextMenuRequested, this, &MainWidget::showContextMenu);
@@ -1079,20 +1084,30 @@ void MainWidget::compressSelectedItems() {
 
 
 
-QString MainWidget::determineDestinationPath(QObject *dropTarget) {
-    if (dropTarget == ui->dir_list_1) {
-        // If the drop target is dir_list_1, get the directory path from model_1
-        QModelIndex rootIndex = ui->dir_list_1->rootIndex();
-        return model_1->filePath(rootIndex);
-    } else if (dropTarget == ui->dir_list_2) {
-        // If the drop target is dir_list_2, get the directory path from model_2
-        QModelIndex rootIndex = ui->dir_list_2->rootIndex();
-        return model_2->filePath(rootIndex);
+QString MainWidget::determineDestinationPath(QObject *dropTarget, const QPoint &dropPosition) {
+    QAbstractItemView *view = qobject_cast<QAbstractItemView*>(dropTarget);
+    if (view) {
+        QModelIndex index = view->indexAt(dropPosition);
+        QFileSystemModel *model = qobject_cast<QFileSystemModel*>(view->model());
+        if (model) {
+            QString path;
+            if (index.isValid()) {
+                // If the index is valid (dropped on an item), get the item's path
+                path = model->filePath(index);
+            } else {
+                // If the index is invalid (dropped on empty space), use the root path of the view
+                path = model->filePath(view->rootIndex());
+            }
+            if (QFileInfo(path).isDir()) {
+                return path; // Return the directory path
+            } else {
+                return QFileInfo(path).path(); // Return the parent directory of the file
+            }
+        }
     }
-
-    // Default case if the drop target is not recognized
-    return QString();
+    return QString(); // Return empty string if destination path cannot be determined
 }
+
 
 void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
     QString defaultSourcePath;
@@ -1203,7 +1218,8 @@ bool MainWidget::eventFilter(QObject *obj, QEvent *event) {
             QList<QUrl> urls = mimeData->urls();
             if (!urls.isEmpty()) {
                 QString sourcePath = urls.first().toLocalFile();
-                QString destinationPath = determineDestinationPath(obj);
+                // Pass the drop position to determine the destination path
+                QString destinationPath = determineDestinationPath(obj, dropEvent->pos());
 
                 if (!sourcePath.isEmpty() && !destinationPath.isEmpty()) {
                     moveItem(sourcePath, destinationPath);
