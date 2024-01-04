@@ -299,7 +299,7 @@ public:
         if (nameRadioButton->isChecked()) return SortByName;
         if (sizeRadioButton->isChecked()) return SortBySize;
         if (dateRadioButton->isChecked()) return SortByDate;
-        return SortByName;  // Default sorting option
+        return SortByName;
     }
 
 private:
@@ -315,23 +315,13 @@ public:
     };
 };
 void MainWidget::showSortDialog() {
-    // Create an instance of the custom sorting dialog
     SortDialog sortDialog(this);
-
-    // Show the dialog and get the result
     int result = sortDialog.exec();
-
-    // Check if the user clicked OK
     if (result == QDialog::Accepted) {
-        // Get the chosen sorting option
         SortDialog::SortOption sortOption = static_cast<SortDialog::SortOption>(sortDialog.getSortOption());
-
-        // Define column indices (consider using constants or enums)
         const int nameColumn = 0;
         const int sizeColumn = 1;
         const int dateColumn = 2;
-
-        // Use the chosen sorting option to sort items
         switch (sortOption) {
         case SortDialog::SortByName:
             model_1->sort(nameColumn, Qt::AscendingOrder);
@@ -599,7 +589,6 @@ void MainWidget::copy() {
     }
 }
 
-
 void MainWidget::copySelectedItems() {
     if (!contextMenuView) return;
 
@@ -621,8 +610,6 @@ void MainWidget::copySelectedItems() {
         QFileInfo fileInfo = model->fileInfo(index);
         if (fileInfo.exists()) {
             QString currentDirPath = model->filePath(view->rootIndex());
-
-            // If it's a directory, copy recursively
             if (fileInfo.isDir()) {
                 if (!copy_directory(fileInfo.absoluteFilePath(), currentDirPath)) {
                     qWarning() << "Failed to copy directory:" << fileInfo.absoluteFilePath();
@@ -641,8 +628,6 @@ void MainWidget::copySelectedItems() {
 void MainWidget::showContextMenu(const QPoint& pos) {
     QObject* senderObject = sender();
     if (!senderObject) return;
-
-    // Store the view that triggered the context menu
     contextMenuView = qobject_cast<QAbstractItemView*>(senderObject);
 
     if (contextMenuView) {
@@ -786,56 +771,6 @@ void MainWidget::renameSelectedItem() {
 }
 
 
-//void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir, bool overwrite) {
-//    QStringList sourceEntries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-
-//    for (const QString& entry: sourceEntries) {
-//        QString sourcePath = sourceDir.absoluteFilePath(entry);
-//        QString destPath = destDir.absoluteFilePath(entry);
-
-//        QFileInfo fileInfo(sourcePath);
-//        if (fileInfo.isDir()) {
-//            QDir subSourceDir(sourcePath);
-//            QDir subDestDir(destPath);
-//            if (!subDestDir.exists()) {
-//                subDestDir.mkpath(".");
-//            }
-//            mergeDirectories(subSourceDir, subDestDir, overwrite);
-//        } else if (fileInfo.isFile()) {
-//            if (overwrite || !QFileInfo::exists(destPath)) {
-//                QFile::remove(destPath);
-//                QFile::copy(sourcePath, destPath);
-//            }
-//            QFile::remove(sourcePath);
-//        }
-//    }
-
-//    sourceDir.removeRecursively();
-//}
-
-
-//void MainWidget::handleDirectoryMerge(QDir& sourceDir, QDir& destDir) {
-//    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
-//    QStringList identicalFiles;
-
-//    for (const QString& file: sourceFiles) {
-//        if (destDir.exists(file)) {
-//            identicalFiles.append(file);
-//        }
-//    }
-
-//    bool overwrite = false;
-//    if (!identicalFiles.isEmpty()) {
-//        QMessageBox::StandardButton reply;
-//        QString question = tr("The directory contains %1 identical files. Do you want to overwrite them?").arg(
-//                identicalFiles.size());
-//        reply = QMessageBox::question(this, tr("Overwrite Files?"), question, QMessageBox::Yes | QMessageBox::No);
-//        overwrite = (reply == QMessageBox::Yes);
-//    }
-
-//    mergeDirectories(sourceDir, destDir, overwrite);
-//}
-
 bool MainWidget::askUserForOverwrite(const QString& filePath) {
     QMessageBox::StandardButton reply;
     QString question = tr("The file %1 already exists. Do you want to overwrite it?").arg(filePath);
@@ -860,7 +795,7 @@ void MainWidget::mergeDirectories(QDir& sourceDir, QDir& destDir) {
             mergeDirectories(subSourceDir, subDestDir);
         } else if (fileInfo.isFile()) {
             if (QFileInfo::exists(destPath)) {
-                bool overwrite = askUserForOverwrite(destPath); // This function should be implemented to show a dialog box
+                bool overwrite = askUserForOverwrite(destPath);
                 if (overwrite) {
                     QFile::remove(destPath);
                     QFile::copy(sourcePath, destPath);
@@ -927,7 +862,6 @@ void MainWidget::move() {
 
 
         if (destDir.exists()) {
-//            handleDirectoryMerge(sourceDir, destDir);
             mergeDirectories(sourceDir, destDir);
             return;
         } else {
@@ -1043,7 +977,7 @@ void MainWidget::compressSelectedItems() {
             return;
         }
         if (fileInfo.exists()) {
-            selectedFiles << fileInfo.fileName();  // Only add the file name, not the full path
+            selectedFiles << fileInfo.fileName();
         }
     }
 
@@ -1051,15 +985,11 @@ void MainWidget::compressSelectedItems() {
         qDebug() << "No valid selected files.";
         return;
     }
-
-    // Create and show the compression settings dialog
     CompressionDialog compressionDialog(this);
     if (compressionDialog.exec() != QDialog::Accepted) {
         qDebug() << "User canceled.";
         return;
     }
-
-    // Retrieve values from the dialog
     QString format = compressionDialog.getFormatComboBox()->currentText();
     QString baseName = compressionDialog.getBaseNameLineEdit()->text();
 
@@ -1069,8 +999,6 @@ void MainWidget::compressSelectedItems() {
     }
 
     QString workingDirectory = model->filePath(view->rootIndex());
-
-    // Determine the unique archive name
     QString archiveName = baseName;
     int archiveNumber = 0;
     QString destinationPath;
@@ -1084,8 +1012,6 @@ void MainWidget::compressSelectedItems() {
         ++archiveNumber;
 
     } while (QFile::exists(destinationPath));
-
-    // Use QProcess to run the compression command based on the selected format
     QProcess process;
     process.setWorkingDirectory(workingDirectory);
 
@@ -1099,8 +1025,6 @@ void MainWidget::compressSelectedItems() {
         qDebug() << "Unsupported archive format.";
         return;
     }
-
-    // Debugging information
     qDebug() << "Executing command:" << process.program() << process.arguments();
 
     if (process.waitForFinished() && process.exitCode() == 0) {
@@ -1121,20 +1045,18 @@ QString MainWidget::determineDestinationPath(QObject *dropTarget, const QPoint &
         if (model) {
             QString path;
             if (index.isValid()) {
-                // If the index is valid (dropped on an item), get the item's path
                 path = model->filePath(index);
             } else {
-                // If the index is invalid (dropped on empty space), use the root path of the view
                 path = model->filePath(view->rootIndex());
             }
             if (QFileInfo(path).isDir()) {
-                return path; // Return the directory path
+                return path;
             } else {
-                return QFileInfo(path).path(); // Return the parent directory of the file
+                return QFileInfo(path).path();
             }
         }
     }
-    return QString(); // Return empty string if destination path cannot be determined
+    return QString();
 }
 
 
@@ -1179,8 +1101,6 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
     qDebug() << baseName;
     qDebug() << dirPath;
 
-//    QFileInfo sourceInfo(sourcePath);
-//    QString baseName = sourceInfo.fileName();
 
     if (sourceInfo.isDir() && sourceInfo.isWritable()) {
         QDir sourceDir(sourcePath);
@@ -1195,7 +1115,6 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
 
 
         if (destDir.exists()) {
-            //            handleDirectoryMerge(sourceDir, destDir);
             mergeDirectories(sourceDir, destDir);
             return;
         } else {
@@ -1210,7 +1129,6 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
         if (destDir.exists()) {
             destinationPath = destDir.filePath(baseName);
         }
-
         if (QFileInfo::exists(destinationPath)) {
             QMessageBox::StandardButton reply;
             reply = QMessageBox::question(this, tr("File Exists"),
@@ -1224,7 +1142,6 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
                 return;
             }
         }
-
         QFile sourceFile(sourcePath);
         if (!sourceFile.rename(destinationPath)) {
             QMessageBox::warning(this, tr("Error"), tr("Failed to move the file."));
@@ -1233,11 +1150,8 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
     } else {
         return;
     }
-
     QMessageBox::information(this, tr("Success"), tr("Item moved successfully."));
 }
-
-
 
 
 bool MainWidget::eventFilter(QObject *obj, QEvent *event) {
@@ -1260,8 +1174,8 @@ bool MainWidget::eventFilter(QObject *obj, QEvent *event) {
             QList<QUrl> urls = mimeData->urls();
             if (!urls.isEmpty()) {
                 QString sourcePath = urls.first().toLocalFile();
-                // Pass the drop position to determine the destination path
-                QString destinationPath = determineDestinationPath(obj, dropEvent->pos());
+                QString destinationPath = determineDestinationPath(obj, dropEvent->position().toPoint());
+
 
                 if (!sourcePath.isEmpty() && !destinationPath.isEmpty()) {
                     moveItem(sourcePath, destinationPath);
