@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include <QLineEdit>
 #include <QFileInfoList>
-#include <QDebug>
 #include <QMenu>
 #include <QProcess>
 #include <QRadioButton>
@@ -592,7 +591,6 @@ void MainWidget::copy() {
                     QMessageBox::warning(this, tr("Error"), tr("Cannot copy a directory to a file."));
                     return;
                 }
-                qDebug() << "this is directory";
                 copy_directory(sourcePath, destinationPath);
             } else if (sourceInfo.isFile()) {
                 if (destinationInfo.isDir()) {
@@ -615,13 +613,11 @@ void MainWidget::copySelectedItems() {
     QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
 
     if (selectedIndexes.isEmpty()) {
-        qDebug() << "No selected items.";
         return;
     }
 
     QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
     if (!model) {
-        qDebug() << "Model is not a QFileSystemModel";
         return;
     }
 
@@ -677,9 +673,9 @@ void MainWidget::createNewFile() {
         QFile file(filePath);
         if (file.open(QIODevice::WriteOnly)) {
             file.close();
-            qDebug() << "File created:" << filePath;
         } else {
-            qDebug() << "Failed to create file:" << filePath;
+            qWarning() << "Failed to create a new file";
+
         }
     }
 }
@@ -703,10 +699,8 @@ void MainWidget::createNewDirectory() {
             counter++;
         }
 
-        if (dir.mkdir(folderPath)) {
-            qDebug() << "Folder created:" << folderPath;
-        } else {
-            qDebug() << "Failed to create folder:" << folderPath;
+        if (!dir.mkdir(folderPath)) {
+            qWarning() << "Failed to create a new directory";
         }
     }
 }
@@ -719,7 +713,6 @@ void MainWidget::deleteSelectedItems() {
     QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
 
     if (selectedIndexes.isEmpty()) {
-        qDebug() << "No selected";
         return;
     }
 
@@ -767,7 +760,6 @@ void MainWidget::renameSelectedItem() {
     QModelIndex currentIndex = view->currentIndex();
 
     if (!currentIndex.isValid()) {
-        qDebug() << "No selected item to rename";
         return;
     }
 
@@ -783,11 +775,19 @@ void MainWidget::renameSelectedItem() {
                                             fileInfo.fileName(), &ok);
     if (ok && !newName.isEmpty()) {
         QString newFilePath = QDir(fileInfo.absolutePath()).filePath(newName);
+
+        // Check if the file with the new name already exists
+        if (QFile::exists(newFilePath)) {
+            QMessageBox::warning(this, tr("Error"), tr("A file with the name '%1' already exists. Please choose a different name.").arg(newName));
+            return;
+        }
+
         if (!QFile::rename(oldFilePath, newFilePath)) {
             QMessageBox::warning(this, tr("Error"), tr("Failed to rename the item."));
         }
     }
 }
+
 
 
 bool MainWidget::askUserForOverwrite(const QString& filePath) {
@@ -976,13 +976,11 @@ void MainWidget::compressSelectedItems() {
     QModelIndexList selectedIndexes = view->selectionModel()->selectedIndexes();
 
     if (selectedIndexes.isEmpty()) {
-        qDebug() << "No selected items.";
         return;
     }
 
     QFileSystemModel* model = qobject_cast<QFileSystemModel*>(view->model());
     if (!model) {
-        qDebug() << "Model is not a QFileSystemModel";
         return;
     }
 
@@ -991,7 +989,6 @@ void MainWidget::compressSelectedItems() {
         QFileInfo fileInfo = model->fileInfo(index);
         QString filePath = fileInfo.filePath();
         if (!fileInfo.isReadable()) {
-            qDebug() << "Permission denied: " << filePath;
             QMessageBox::warning(this, "Permission Denied", "You don't have permission to open: " + filePath);
             return;
         }
@@ -1001,19 +998,16 @@ void MainWidget::compressSelectedItems() {
     }
 
     if (selectedFiles.isEmpty()) {
-        qDebug() << "No valid selected files.";
         return;
     }
     CompressionDialog compressionDialog(this);
     if (compressionDialog.exec() != QDialog::Accepted) {
-        qDebug() << "User canceled.";
         return;
     }
     QString format = compressionDialog.getFormatComboBox()->currentText();
     QString baseName = compressionDialog.getBaseNameLineEdit()->text();
 
     if (baseName.isEmpty()) {
-        qDebug() << "Invalid base name.";
         return;
     }
 
@@ -1041,15 +1035,12 @@ void MainWidget::compressSelectedItems() {
     } else if (format == "tar.xz") {
         process.start("tar", QStringList() << "cJf" << destinationPath << selectedFiles);
     } else {
-        qDebug() << "Unsupported archive format.";
         return;
     }
-    qDebug() << "Executing command:" << process.program() << process.arguments();
 
     if (process.waitForFinished() && process.exitCode() == 0) {
         QMessageBox::information(this, "Compression Success", "Files compressed successfully.");
     } else {
-        qDebug() << "Compression failed. Exit code:" << process.exitCode();
         QMessageBox::warning(this, "Compression Error", "Failed to compress files.");
     }
 }
@@ -1178,17 +1169,14 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
 bool MainWidget::eventFilter(QObject *obj, QEvent *event) {
     if (event->type() == QEvent::DragEnter) {
         auto *dragEnterEvent = static_cast<QDragEnterEvent*>(event);
-        qDebug() << "Drag Enter Event";
         dragEnterEvent->acceptProposedAction();
         return true;
     } else if (event->type() == QEvent::DragMove) {
         auto *dragMoveEvent = static_cast<QDragMoveEvent*>(event);
-        qDebug() << "Drag Move Event";
         dragMoveEvent->acceptProposedAction();
         return true;
     } else if (event->type() == QEvent::Drop) {
         auto *dropEvent = static_cast<QDropEvent*>(event);
-        qDebug() << "Drop Event";
 
         const QMimeData *mimeData = dropEvent->mimeData();
         if (mimeData->hasUrls()) {
