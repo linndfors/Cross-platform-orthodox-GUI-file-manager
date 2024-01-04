@@ -1098,8 +1098,10 @@ void MainWidget::moveItem(QString &sourcePath, QString &destinationPath) {
         return;
     }
 
-    qDebug() << baseName;
-    qDebug() << dirPath;
+    if (baseName == "." || baseName == "..") {
+        QMessageBox::warning(this, tr("Error"), tr("Cannot move the current or parent directory."));
+        return;
+    }
 
 
     if (sourceInfo.isDir() && sourceInfo.isWritable()) {
