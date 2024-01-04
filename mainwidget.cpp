@@ -339,6 +339,15 @@ void MainWidget::showSortDialog() {
     }
 }
 
+QStringList MainWidget::getFilesRecursively(QString &directoryPath) {
+    QStringList filesList;
+    QDirIterator it(directoryPath, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        filesList << it.next();
+    }
+    return filesList;
+}
+
 void MainWidget::compareDirectories() {
     QString currentDirPath = model_1->filePath(ui->dir_list_1->rootIndex());
     bool ok;
@@ -364,11 +373,21 @@ void MainWidget::compareDirectories() {
     QStringList similarFiles;
     QStringList differentFiles;
 
-    QStringList sourceFiles = sourceDir.entryList(QDir::Files);
-    QStringList destFiles = destDir.entryList(QDir::Files);
+    QStringList sourceFiles = getFilesRecursively(dirPath1);
+    QStringList destFiles = getFilesRecursively(dirPath2);
+    QStringList destBaseNames;
+
+    for (const QString& file : destFiles) {
+        QFileInfo destInfo(file);
+        QString baseName = destInfo.fileName();
+        destBaseNames.append(baseName);
+    }
+
 
     for (const QString& file : sourceFiles) {
-        if (destFiles.contains(file)) {
+        QFileInfo sourceInfo(file);
+        QString baseName = sourceInfo.fileName();
+        if (destBaseNames.contains(baseName)) {
             similarFiles.append(file);
         } else {
             differentFiles.append(file);

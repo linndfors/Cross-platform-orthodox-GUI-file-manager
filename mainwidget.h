@@ -73,6 +73,7 @@ private:
     QAbstractItemView* contextMenuView;
     QString determineDestinationPath(QObject *dropTarget, const QPoint &dropPosition);
     void moveItem(QString &sourcePath, QString &destinationPath);
+    QStringList getFilesRecursively(QString &directoryPath);
 
 
 };
