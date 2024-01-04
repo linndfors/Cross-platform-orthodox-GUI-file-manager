@@ -56,6 +56,9 @@ private slots:
     void copySelectedItems();
     void showSortDialog();
     void compareDirectories();
+    void setLightMode();
+    void toggleMode();
+    void setDarkMode();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override {

@@ -115,6 +115,34 @@ void MainWidget::setup_tree_view(QTreeView* view, QFileSystemModel* model) {
     }
 }
 
+void MainWidget::setLightMode() {
+    qApp->setStyleSheet(
+        "QWidget {"
+        "   background-color: #ffffff;"
+        "   color: #000000;"
+        "}"
+        );
+}
+
+void MainWidget::setDarkMode() {
+    qApp->setStyleSheet(
+        "QWidget {"
+        "   background-color: #2b2b2b;"
+        "   color: #ffffff;"
+        "}"
+        );
+}
+
+void MainWidget::toggleMode() {
+    static bool isDarkMode = false;
+    isDarkMode = !isDarkMode;
+
+    if (isDarkMode) {
+        setDarkMode();
+    } else {
+        setLightMode();
+    }
+}
 
 void MainWidget::setup_connections() {
     for (auto listView: {ui->dir_list_1, ui->dir_list_2}) {
@@ -146,6 +174,7 @@ void MainWidget::setup_connections() {
     connect(ui->copyButton, &QPushButton::clicked, this, &MainWidget::copy);
     connect(ui->moveButton, &QPushButton::clicked, this, &MainWidget::move);
     connect(ui->compareButton, &QPushButton::clicked, this, &MainWidget::compareDirectories);
+    connect(ui->modeButton, &QPushButton::clicked, this, &MainWidget::toggleMode);
     ui->dir_list_1->setSelectionMode(QAbstractItemView::ExtendedSelection);
     ui->dir_list_2->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
