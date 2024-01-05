@@ -13,7 +13,6 @@ SOURCES += \
     mainwidget.cpp \
 
 INCLUDEPATH += /usr/include/
-LIBS += -L/usr/include/zlib.h -lz
 
 
 HEADERS += \
