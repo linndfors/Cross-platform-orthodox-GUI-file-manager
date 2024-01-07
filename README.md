@@ -4,7 +4,7 @@
 - Yakovkin Mykola
 - Nahurna Olha
 
-  ## Prerequisites
+## Prerequisites
 
 ❯ Ubuntu or WSL or MacOS
 ❯ GCC
