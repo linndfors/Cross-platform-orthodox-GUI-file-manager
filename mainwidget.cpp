@@ -776,7 +776,6 @@ void MainWidget::renameSelectedItem() {
     if (ok && !newName.isEmpty()) {
         QString newFilePath = QDir(fileInfo.absolutePath()).filePath(newName);
 
-        // Check if the file with the new name already exists
         if (QFile::exists(newFilePath)) {
             QMessageBox::warning(this, tr("Error"), tr("A file with the name '%1' already exists. Please choose a different name.").arg(newName));
             return;
@@ -984,7 +983,6 @@ void MainWidget::compressSelectedItems() {
         return;
     }
 
-    // Collect absolute file paths of selected items
     for (const QModelIndex& index: selectedIndexes) {
         QFileInfo fileInfo = model->fileInfo(index);
         QString filePath = fileInfo.filePath();
