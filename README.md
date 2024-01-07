@@ -7,8 +7,11 @@
 ## Prerequisites
 
 ❯ Ubuntu or WSL or MacOS
+
 ❯ GCC
+
 ❯ Git
+
 ❯ Qt6
 
 ## Goal:
