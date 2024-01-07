@@ -3,6 +3,14 @@
 - Maslenchenko Oleksandra
 - Yakovkin Mykola
 - Nahurna Olha
+
+  ## Prerequisites
+
+❯ Ubuntu or WSL or MacOS
+❯ GCC
+❯ Git
+❯ Qt6
+
 ## Goal:
 In contemporary computing, efficient file management is pivotal for user interaction with operating systems. This project presents a Cross-Platform Orthodox Graphical User Interface (GUI) File Manager developed using the Qt framework.
 
@@ -21,6 +29,11 @@ The goal is to offer users a seamless, intuitive, and consistent file navigation
 
 ## Compilation/Execution
 ### Ubuntu:
+```shell
+qmake
+make
+./file_manager
+```
 ### MacOS:
 ```shell
 qmake
@@ -29,6 +42,11 @@ cd ./file_manager.app/Contents/MacOS/
 ./file_manager
 ```
 ### Windows:
+```shell
+qmake
+mingw-w64-make
+./file_manager
+```
 
 ## Resources:
 https://youtube.com/playlist?list=PLS1QulWo1RIZiBcTr5urECberTITj7gjA&si=k_nxoQdJTPAKRBGi<br>
